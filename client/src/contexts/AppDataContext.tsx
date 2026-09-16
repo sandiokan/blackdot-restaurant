@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { TODAY } from "@/data/mockData";
+import { getLocalDateKey } from "@/lib/localDate";
+import { countCovers, reservationsForDate } from "@/lib/reservationMetrics";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { NewReservation, Reservation, Restaurant, RestaurantUpdate, Shift, ShiftInput, StaffArea, StaffInput, StaffMember } from "@/types/models";
 
@@ -55,6 +56,7 @@ type DatabaseShift = {
 };
 
 interface AppDataContextValue {
+  currentDate: string;
   restaurant: Restaurant | null;
   reservations: Reservation[];
   staff: StaffMember[];
@@ -435,10 +437,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [restaurant]);
 
   const value = useMemo(() => {
-    const activeReservations = reservations.filter((item) => item.date === TODAY && item.status !== "cancelled");
-    const lunchCovers = activeReservations.filter((item) => item.service === "Pranzo").reduce((sum, item) => sum + item.guests, 0);
-    const dinnerCovers = activeReservations.filter((item) => item.service === "Cena").reduce((sum, item) => sum + item.guests, 0);
-    const onDutyIds = new Set(shifts.filter((shift) => shift.date === TODAY && shift.status === "scheduled").map((shift) => shift.staffId));
+    const currentDate = getLocalDateKey();
+    const activeReservations = reservationsForDate(reservations, currentDate);
+    const lunchCovers = countCovers(activeReservations, "Pranzo");
+    const dinnerCovers = countCovers(activeReservations, "Cena");
+    const onDutyIds = new Set(shifts.filter((shift) => shift.date === currentDate && shift.status === "scheduled").map((shift) => shift.staffId));
     const staffOnDuty = staff.filter((person) => onDutyIds.has(person.id) && person.status !== "absent");
     const staffOnDutyByArea = staffOnDuty.reduce<Record<StaffArea, number>>((counts, person) => {
       counts[person.area] += 1;
@@ -446,6 +449,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }, { Sala: 0, Cucina: 0, Bar: 0, Amministrazione: 0 });
 
     return {
+      currentDate,
       restaurant,
       reservations,
       staff,

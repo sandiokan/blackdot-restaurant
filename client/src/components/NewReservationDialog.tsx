@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { CalendarDays, Check, Minus, Plus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "@/contexts/AppDataContext";
-import { TODAY } from "@/data/mockData";
+import { addLocalDays } from "@/lib/localDate";
 import type { ReservationSource, ServiceType } from "@/types/models";
 import { PrimaryButton, Segmented } from "@/components/shared/Primitives";
 
@@ -11,25 +11,19 @@ const times: Record<ServiceType, string[]> = {
   Cena: ["19:30", "20:00", "20:30", "21:00", "21:30"],
 };
 
-function addDays(dateString: string, days: number) {
-  const date = new Date(`${dateString}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toLocaleDateString("en-CA");
-}
-
 export default function NewReservationDialog() {
-  const { modalOpen, setModalOpen, addReservation, reservations, restaurant, saving } = useAppData();
+  const { currentDate, modalOpen, setModalOpen, addReservation, reservations, restaurant, saving } = useAppData();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [day, setDay] = useState("Oggi");
-  const [customDate, setCustomDate] = useState(TODAY);
+  const [customDate, setCustomDate] = useState(currentDate);
   const [service, setService] = useState<ServiceType>("Cena");
   const [time, setTime] = useState("20:00");
   const [guests, setGuests] = useState(4);
   const [source, setSource] = useState<ReservationSource>("Telefono");
   const [note, setNote] = useState("");
 
-  const selectedDate = day === "Oggi" ? TODAY : day === "Domani" ? addDays(TODAY, 1) : customDate;
+  const selectedDate = day === "Oggi" ? currentDate : day === "Domani" ? addLocalDays(currentDate, 1) : customDate;
   const capacity = service === "Pranzo" ? restaurant?.lunchCapacity ?? 0 : restaurant?.dinnerCapacity ?? 0;
   const availability = useMemo(() => {
     const occupied = reservations
@@ -90,7 +84,7 @@ export default function NewReservationDialog() {
           <div className="dialog-form">
             <label className="field"><span>Nome e cognome</span><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Mario Rossi" /></label>
             <label className="field"><span>Telefono</span><input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+39 333 1234567" /></label>
-            <div className="field"><span>Data</span><Segmented options={["Oggi", "Domani", "Scegli data"]} value={day} onChange={setDay} />{day === "Scegli data" && <input className="custom-date-input" type="date" min={TODAY} value={customDate} onChange={(event) => setCustomDate(event.target.value)} />}</div>
+            <div className="field"><span>Data</span><Segmented options={["Oggi", "Domani", "Scegli data"]} value={day} onChange={setDay} />{day === "Scegli data" && <input className="custom-date-input" type="date" min={currentDate} value={customDate} onChange={(event) => setCustomDate(event.target.value)} />}</div>
             <div className="field"><span>Servizio</span><Segmented options={["Pranzo", "Cena"] as ServiceType[]} value={service} onChange={(value) => { setService(value); setTime(times[value][1]); }} /></div>
             <div className="field"><span>Orario</span><div className="time-options">{times[service].map((slot) => <button type="button" key={slot} className={time === slot ? "active" : ""} onClick={() => setTime(slot)}>{slot}</button>)}</div></div>
             <div className="field inline-field"><span>Persone</span><div className="stepper"><button type="button" onClick={() => setGuests((value) => Math.max(1, value - 1))}><Minus size={16} /></button><b>{guests}</b><button type="button" onClick={() => setGuests((value) => Math.min(20, value + 1))}><Plus size={16} /></button></div></div>

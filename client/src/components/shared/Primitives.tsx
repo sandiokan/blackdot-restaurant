@@ -54,7 +54,7 @@ export function StatusBadge({ status }: { status: ReservationStatus }) {
 }
 
 export function ServiceProgress({ label, used, total = 80, compact = false }: { label: string; used: number; total?: number; compact?: boolean }) {
-  const percent = Math.min(100, Math.round((used / total) * 100));
+  const percent = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   const tone = percent >= 85 ? "red" : percent >= 65 ? "gold" : "green";
   return (
     <div className={cn("service-progress", compact && "compact")}>

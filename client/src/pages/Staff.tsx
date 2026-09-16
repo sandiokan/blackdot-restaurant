@@ -3,7 +3,6 @@ import { MoreVertical, Plus, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, PageHeader, Panel, PrimaryButton, SectionTitle, Segmented } from "@/components/shared/Primitives";
 import { useAppData } from "@/contexts/AppDataContext";
-import { TODAY } from "@/data/mockData";
 import type { Shift, StaffArea, StaffInput, StaffMember, StaffStatus } from "@/types/models";
 
 const filters = ["Tutti", "Sala", "Cucina", "Bar", "Amministrazione"] as const;
@@ -25,15 +24,15 @@ function italianDate(dateString: string) {
 }
 
 export default function Staff() {
-  const { staff, shifts, staffOnDuty, staffOnDutyByArea, saving, addStaff, updateStaff } = useAppData();
+  const { currentDate, staff, shifts, staffOnDuty, staffOnDutyByArea, saving, addStaff, updateStaff } = useAppData();
   const [filter, setFilter] = useState<StaffArea | "Tutti">("Tutti");
   const [editing, setEditing] = useState<StaffMember | null | undefined>(undefined);
   const visible = staff.filter((item) => filter === "Tutti" || item.area === filter);
-  const todayShifts = useMemo(() => new Map(shifts.filter((shift) => shift.date === TODAY).map((shift) => [shift.staffId, shift])), [shifts]);
+  const todayShifts = useMemo(() => new Map(shifts.filter((shift) => shift.date === currentDate).map((shift) => [shift.staffId, shift])), [shifts, currentDate]);
   const nextShifts = useMemo(() => shifts
-    .filter((shift) => shift.date > TODAY && shift.status === "scheduled")
+    .filter((shift) => shift.date > currentDate && shift.status === "scheduled")
     .filter((shift, index, items) => items.findIndex((item) => item.staffId === shift.staffId) === index)
-    .slice(0, 5), [shifts]);
+    .slice(0, 5), [shifts, currentDate]);
 
   return <div className="page staff-page">
     <PageHeader title="Personale" description="Gestisci il tuo team e i relativi ruoli." action={<PrimaryButton onClick={() => setEditing(null)}><Plus size={18} />Aggiungi membro</PrimaryButton>} />

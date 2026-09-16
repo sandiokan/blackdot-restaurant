@@ -2,21 +2,21 @@ import { useMemo, useState } from "react";
 import { CalendarDays, Download, Globe2, MessageCircle, MoreHorizontal, Phone, Plus, Search, Table2, Trash2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "@/contexts/AppDataContext";
-import { TODAY } from "@/data/mockData";
+import { formatLocalDate } from "@/lib/localDate";
 import type { Reservation, ReservationStatus } from "@/types/models";
 import { Avatar, GhostButton, PageHeader, Panel, PrimaryButton, Segmented, StatCard, StatusBadge } from "@/components/shared/Primitives";
 
 const sourceIcons = { Telefono: Phone, Sito: Globe2, WhatsApp: MessageCircle, "Walk-in": Users };
 
 export default function Reservations() {
-  const { restaurant, reservations, totalCovers, setModalOpen, updateReservationStatus } = useAppData();
+  const { currentDate, restaurant, reservations, totalCovers, setModalOpen, updateReservationStatus } = useAppData();
   const [range, setRange] = useState("Oggi");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Tutti gli stati");
   const [source, setSource] = useState("Tutte le provenienze");
   const [selectedId, setSelectedId] = useState("r9");
   const [detailOpen, setDetailOpen] = useState(false);
-  const todayReservations = reservations.filter((item) => item.date === TODAY);
+  const todayReservations = reservations.filter((item) => item.date === currentDate);
   const totalCapacity = (restaurant?.lunchCapacity ?? 80) + (restaurant?.dinnerCapacity ?? 80);
 
   const filtered = useMemo(() => reservations.filter((item) => {
@@ -36,7 +36,7 @@ export default function Reservations() {
     <div className="page reservations-page">
       <div className="reservations-main">
         <PageHeader title="Prenotazioni" description="Gestisci tutte le prenotazioni del tuo ristorante." action={<PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton>} />
-        <div className="reservations-toolbar"><Segmented options={["Oggi", "Domani", "Questa settimana", "Personalizza"]} value={range} onChange={setRange} /><div className="date-nav"><button>‹</button><b>Martedì 16 settembre 2026</b><button>›</button></div></div>
+        <div className="reservations-toolbar"><Segmented options={["Oggi", "Domani", "Questa settimana", "Personalizza"]} value={range} onChange={setRange} /><div className="date-nav"><button>‹</button><b>{formatLocalDate(currentDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</b><button>›</button></div></div>
         <div className="stats-grid four compact-stats">
           <StatCard icon={CalendarDays} value={todayReservations.length} label="Prenotazioni" />
           <StatCard icon={Users} value={totalCovers} label="Coperti totali" />
@@ -67,7 +67,7 @@ function ReservationDetail({ item, open, onClose, onStatus }: { item: Reservatio
     <div className="detail-head"><div className="detail-person"><Avatar initials={item.name.split(" ").map((part) => part[0]).join("")} /><div><h2>{item.name}</h2><StatusBadge status={item.status} /></div></div><button onClick={onClose}><X /></button></div>
     <div className="contact-actions"><button><Phone /></button><button>✉</button><button><MessageCircle /></button><button><MoreHorizontal /></button></div>
     <div className="detail-tabs"><button className="active">Dettagli</button><button>Note</button><button>Cronologia</button></div>
-    <Panel className="detail-card"><DetailLine icon={CalendarDays} label="Data" value="Martedì 16 settembre 2026" /><DetailLine icon={Phone} label="Orario" value={item.time} /><DetailLine icon={Users} label="Coperti" value={`${item.guests} persone`} /><DetailLine icon={Table2} label="Tavolo" value={`${item.table} · sala principale`} /><DetailLine icon={Globe2} label="Provenienza" value={item.source} /><DetailLine icon={MessageCircle} label="Note" value={item.note || "Nessuna nota"} /></Panel>
+    <Panel className="detail-card"><DetailLine icon={CalendarDays} label="Data" value={formatLocalDate(item.date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} /><DetailLine icon={Phone} label="Orario" value={item.time} /><DetailLine icon={Users} label="Coperti" value={`${item.guests} persone`} /><DetailLine icon={Table2} label="Tavolo" value={`${item.table} · sala principale`} /><DetailLine icon={Globe2} label="Provenienza" value={item.source} /><DetailLine icon={MessageCircle} label="Note" value={item.note || "Nessuna nota"} /></Panel>
     <Panel className="detail-card special-card"><h3>Richieste speciali</h3><p>{item.note || "Nessuna richiesta particolare"}</p></Panel>
     <div className="detail-actions"><PrimaryButton onClick={() => toast.success("Modifica prenotazione aperta")}>Modifica prenotazione</PrimaryButton>{item.status === "pending" && <GhostButton onClick={() => void changeStatus("confirmed", "Prenotazione confermata")}>Conferma richiesta</GhostButton>}<GhostButton onClick={() => toast.success("Tavolo spostato")}>Sposta tavolo</GhostButton><button className="danger-button" onClick={() => void changeStatus("cancelled", "Prenotazione cancellata")}><Trash2 size={17} />Cancella prenotazione</button></div>
   </aside>;

@@ -410,6 +410,10 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
 .availability-meta { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: #aab1af; font-size: 9px; }.availability-meta svg { color: var(--gold); }
 .suggestions { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }.suggestions b { font-size: 9px; }.suggestions label { color: #9ba3a1; font-size: 9px; }.suggestions input { width: auto; margin-right: 7px; accent-color: var(--gold); }
 .dialog-submit { width: calc(42.5% - 8px); margin: 15px 0 0 auto; display: flex; }
+.entity-dialog { width: min(650px, 100%); }
+.entity-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.entity-span { grid-column: 1 / -1; }
+.entity-submit { min-width: 190px; margin: 8px 0 0 auto; display: flex; }
 
 .onboarding-shell { min-height: 100vh; display: grid; grid-template-columns: 270px 1fr; background: radial-gradient(circle at 75% 30%, rgba(50,85,73,.1), transparent 35%), #090e10; }
 .onboarding-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 28px 21px; border-right: 1px solid var(--line); background: #080d0f; }
@@ -458,7 +462,7 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
   .staff-page > .segmented { width: 100%; margin-top: 0; }.staff-grid { grid-template-columns: 1fr 1fr; gap: 8px; }.staff-card { min-height: 184px; padding: 12px; }.avatar-lg { width: 58px; height: 58px; }.shift-summary > div { grid-template-columns: 1fr 1fr; }.shift-summary span { border-bottom: 1px solid var(--line); }.shift-summary span:nth-child(2) { border-right: 0; }
   .shift-toolbar { align-items: stretch; flex-direction: column; gap: 10px; }.shift-toolbar .date-nav { justify-content: space-between; }.shift-toolbar .segmented { width: 100%; }.shift-toolbar .segmented button { flex: 1; }.schedule-table-panel { margin: 0 -13px; border-radius: 0; }
   .settings-tabs { margin-left: -13px; margin-right: -13px; padding: 0 8px; }.restaurant-brand-card { float: none; width: 100%; margin: 0 0 12px; }.restaurant-image { height: 110px; }
-  .dialog-backdrop { align-items: end; padding: 0; }.reservation-dialog { width: 100%; max-height: 94vh; padding: 17px 14px 23px; border-radius: 16px 16px 0 0; }.dialog-grid, .dialog-form { grid-template-columns: 1fr; }.dialog-form .field { grid-column: 1!important; }.availability-panel { padding: 14px; }.suggestions { display: none; }.dialog-submit { width: 100%; }
+  .dialog-backdrop { align-items: end; padding: 0; }.reservation-dialog { width: 100%; max-height: 94vh; padding: 17px 14px 23px; border-radius: 16px 16px 0 0; }.dialog-grid, .dialog-form, .entity-form { grid-template-columns: 1fr; }.dialog-form .field, .entity-form .field { grid-column: 1!important; }.availability-panel { padding: 14px; }.suggestions { display: none; }.dialog-submit, .entity-submit { width: 100%; }
   .onboarding-shell { grid-template-columns: 1fr; }.onboarding-sidebar { display: none; }.onboarding-top { height: 55px; padding: 0 15px; }.onboarding-content { width: calc(100% - 26px); margin: 25px auto 35px; }.onboarding-content h1 { font-size: 36px; }.capacity-form { padding: 15px; }.capacity-form > .field { width: 100%; }.onboarding-services { grid-template-columns: 1fr; }.amenities { grid-template-columns: 1fr 1fr; }.onboarding-actions { position: sticky; bottom: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(11,16,18,.92); backdrop-filter: blur(12px); }
 }
 

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TODAY } from "@/data/mockData";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { NewReservation, Reservation, Restaurant, RestaurantUpdate } from "@/types/models";
+import type { NewReservation, Reservation, Restaurant, RestaurantUpdate, Shift, ShiftInput, StaffArea, StaffInput, StaffMember } from "@/types/models";
 
 type DatabaseRestaurant = {
   id: string;
@@ -33,13 +33,38 @@ type DatabaseReservation = {
   table_name: string;
 };
 
+type DatabaseStaff = {
+  id: string;
+  name: string;
+  role: string;
+  area: StaffMember["area"];
+  phone: string;
+  email: string;
+  status: StaffMember["status"];
+};
+
+type DatabaseShift = {
+  id: string;
+  staff_id: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  area: Shift["area"];
+  status: Shift["status"];
+  notes: string;
+};
+
 interface AppDataContextValue {
   restaurant: Restaurant | null;
   reservations: Reservation[];
+  staff: StaffMember[];
+  shifts: Shift[];
   activeReservations: Reservation[];
   lunchCovers: number;
   dinnerCovers: number;
   totalCovers: number;
+  staffOnDuty: StaffMember[];
+  staffOnDutyByArea: Record<StaffArea, number>;
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -49,6 +74,10 @@ interface AppDataContextValue {
   saveRestaurant: (restaurant: RestaurantUpdate) => Promise<Restaurant>;
   addReservation: (reservation: NewReservation) => Promise<Reservation>;
   updateReservationStatus: (id: string, status: Reservation["status"]) => Promise<Reservation>;
+  addStaff: (person: StaffInput) => Promise<StaffMember>;
+  updateStaff: (id: string, person: StaffInput) => Promise<StaffMember>;
+  addShift: (shift: ShiftInput) => Promise<Shift>;
+  updateShift: (id: string, shift: ShiftInput) => Promise<Shift>;
 }
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
@@ -91,8 +120,46 @@ function mapReservation(row: DatabaseReservation): Reservation {
   };
 }
 
+const staffAccents: Record<StaffArea, string> = {
+  Sala: "#d89a67",
+  Cucina: "#cab18b",
+  Bar: "#85665d",
+  Amministrazione: "#6e8b7d",
+};
+
+function mapStaff(row: DatabaseStaff): StaffMember {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    area: row.area,
+    phone: row.phone,
+    email: row.email,
+    status: row.status,
+    initials: row.name.split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase(),
+    accent: staffAccents[row.area],
+  };
+}
+
+function mapShift(row: DatabaseShift): Shift {
+  return {
+    id: row.id,
+    staffId: row.staff_id,
+    date: row.date,
+    startTime: row.start_time ? cleanTime(row.start_time) : null,
+    endTime: row.end_time ? cleanTime(row.end_time) : null,
+    area: row.area,
+    status: row.status,
+    notes: row.notes,
+  };
+}
+
 function sortReservations(items: Reservation[]) {
   return [...items].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+}
+
+function sortShifts(items: Shift[]) {
+  return [...items].sort((a, b) => `${a.date} ${a.startTime ?? ""}`.localeCompare(`${b.date} ${b.startTime ?? ""}`));
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -104,6 +171,8 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,16 +199,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!restaurantRow) throw new Error("Nessun ristorante configurato. Applica la migration Supabase.");
 
       const currentRestaurant = mapRestaurant(restaurantRow as DatabaseRestaurant);
-      const { data: reservationRows, error: reservationsError } = await supabase
-        .from("reservations")
-        .select("*")
-        .eq("restaurant_id", currentRestaurant.id)
-        .order("date", { ascending: true })
-        .order("time", { ascending: true });
+      const [reservationsResult, staffResult, shiftsResult] = await Promise.all([
+        supabase.from("reservations").select("*").eq("restaurant_id", currentRestaurant.id).order("date", { ascending: true }).order("time", { ascending: true }),
+        supabase.from("staff").select("*").eq("restaurant_id", currentRestaurant.id).order("name", { ascending: true }),
+        supabase.from("shifts").select("*").eq("restaurant_id", currentRestaurant.id).order("date", { ascending: true }).order("start_time", { ascending: true }),
+      ]);
 
-      if (reservationsError) throw reservationsError;
+      if (reservationsResult.error) throw reservationsResult.error;
       setRestaurant(currentRestaurant);
-      setReservations(sortReservations((reservationRows ?? []).map((row) => mapReservation(row as DatabaseReservation))));
+      setReservations(sortReservations((reservationsResult.data ?? []).map((row) => mapReservation(row as DatabaseReservation))));
+
+      if (staffResult.error) throw staffResult.error;
+      if (shiftsResult.error) throw shiftsResult.error;
+      setStaff((staffResult.data ?? []).map((row) => mapStaff(row as DatabaseStaff)));
+      setShifts(sortShifts((shiftsResult.data ?? []).map((row) => mapShift(row as DatabaseShift))));
     } catch (caughtError) {
       setError(getErrorMessage(caughtError, "Errore durante il caricamento dei dati."));
     } finally {
@@ -251,18 +324,138 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [restaurant]);
 
+  const addStaff = useCallback(async (person: StaffInput) => {
+    if (!supabase || !restaurant) throw new Error("Ristorante non disponibile.");
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: insertError } = await supabase.from("staff").insert({
+        restaurant_id: restaurant.id,
+        name: person.name,
+        role: person.role,
+        area: person.area,
+        phone: person.phone,
+        email: person.email,
+        status: person.status,
+      }).select("*").single();
+      if (insertError) throw insertError;
+      const savedPerson = mapStaff(data as DatabaseStaff);
+      setStaff((current) => [...current, savedPerson].sort((a, b) => a.name.localeCompare(b.name)));
+      return savedPerson;
+    } catch (caughtError) {
+      const message = getErrorMessage(caughtError, "Errore durante il salvataggio del membro del personale.");
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [restaurant]);
+
+  const updateStaff = useCallback(async (id: string, person: StaffInput) => {
+    if (!supabase || !restaurant) throw new Error("Ristorante non disponibile.");
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: updateError } = await supabase.from("staff").update({
+        name: person.name,
+        role: person.role,
+        area: person.area,
+        phone: person.phone,
+        email: person.email,
+        status: person.status,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id).eq("restaurant_id", restaurant.id).select("*").single();
+      if (updateError) throw updateError;
+      const savedPerson = mapStaff(data as DatabaseStaff);
+      setStaff((current) => current.map((item) => item.id === id ? savedPerson : item).sort((a, b) => a.name.localeCompare(b.name)));
+      return savedPerson;
+    } catch (caughtError) {
+      const message = getErrorMessage(caughtError, "Errore durante l'aggiornamento del personale.");
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [restaurant]);
+
+  const addShift = useCallback(async (shift: ShiftInput) => {
+    if (!supabase || !restaurant) throw new Error("Ristorante non disponibile.");
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: insertError } = await supabase.from("shifts").insert({
+        restaurant_id: restaurant.id,
+        staff_id: shift.staffId,
+        date: shift.date,
+        start_time: shift.status === "rest" ? null : shift.startTime,
+        end_time: shift.status === "rest" ? null : shift.endTime,
+        area: shift.area,
+        status: shift.status,
+        notes: shift.notes,
+      }).select("*").single();
+      if (insertError) throw insertError;
+      const savedShift = mapShift(data as DatabaseShift);
+      setShifts((current) => sortShifts([...current, savedShift]));
+      return savedShift;
+    } catch (caughtError) {
+      const message = getErrorMessage(caughtError, "Errore durante il salvataggio del turno.");
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [restaurant]);
+
+  const updateShift = useCallback(async (id: string, shift: ShiftInput) => {
+    if (!supabase || !restaurant) throw new Error("Ristorante non disponibile.");
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: updateError } = await supabase.from("shifts").update({
+        staff_id: shift.staffId,
+        date: shift.date,
+        start_time: shift.status === "rest" ? null : shift.startTime,
+        end_time: shift.status === "rest" ? null : shift.endTime,
+        area: shift.area,
+        status: shift.status,
+        notes: shift.notes,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id).eq("restaurant_id", restaurant.id).select("*").single();
+      if (updateError) throw updateError;
+      const savedShift = mapShift(data as DatabaseShift);
+      setShifts((current) => sortShifts(current.map((item) => item.id === id ? savedShift : item)));
+      return savedShift;
+    } catch (caughtError) {
+      const message = getErrorMessage(caughtError, "Errore durante l'aggiornamento del turno.");
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [restaurant]);
+
   const value = useMemo(() => {
     const activeReservations = reservations.filter((item) => item.date === TODAY && item.status !== "cancelled");
     const lunchCovers = activeReservations.filter((item) => item.service === "Pranzo").reduce((sum, item) => sum + item.guests, 0);
     const dinnerCovers = activeReservations.filter((item) => item.service === "Cena").reduce((sum, item) => sum + item.guests, 0);
+    const onDutyIds = new Set(shifts.filter((shift) => shift.date === TODAY && shift.status === "scheduled").map((shift) => shift.staffId));
+    const staffOnDuty = staff.filter((person) => onDutyIds.has(person.id) && person.status !== "absent");
+    const staffOnDutyByArea = staffOnDuty.reduce<Record<StaffArea, number>>((counts, person) => {
+      counts[person.area] += 1;
+      return counts;
+    }, { Sala: 0, Cucina: 0, Bar: 0, Amministrazione: 0 });
 
     return {
       restaurant,
       reservations,
+      staff,
+      shifts,
       activeReservations,
       lunchCovers,
       dinnerCovers,
       totalCovers: lunchCovers + dinnerCovers,
+      staffOnDuty,
+      staffOnDutyByArea,
       loading,
       saving,
       error,
@@ -272,8 +465,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveRestaurant,
       addReservation,
       updateReservationStatus,
+      addStaff,
+      updateStaff,
+      addShift,
+      updateShift,
     };
-  }, [restaurant, reservations, loading, saving, error, modalOpen, reloadData, saveRestaurant, addReservation, updateReservationStatus]);
+  }, [restaurant, reservations, staff, shifts, loading, saving, error, modalOpen, reloadData, saveRestaurant, addReservation, updateReservationStatus, addStaff, updateStaff, addShift, updateShift]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

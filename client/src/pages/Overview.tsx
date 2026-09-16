@@ -6,7 +6,7 @@ import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatCa
 
 export default function Overview() {
   const [, navigate] = useLocation();
-  const { restaurant, reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, setModalOpen } = useAppData();
+  const { restaurant, reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, staffOnDuty, staffOnDutyByArea, setModalOpen } = useAppData();
   const todayReservations = reservations.filter((item) => item.date === TODAY);
   const pending = activeReservations.filter((item) => item.status === "pending").length;
   const upcoming = activeReservations.filter((item) => item.service === "Cena").slice(0, 5);
@@ -28,7 +28,7 @@ export default function Overview() {
         <StatCard icon={CalendarDays} value={todayReservations.length} label="Prenotazioni oggi" foot={`+${pending} in attesa`} tone="green" />
         <StatCard icon={Users} value={totalCovers} label="Coperti prenotati" foot={`${Math.round((totalCovers / totalCapacity) * 100)}% della capienza giornaliera`} tone="neutral" />
         <StatCard icon={Table2} value={Math.max(0, totalCapacity - totalCovers)} label="Posti disponibili" foot={`su ${totalCapacity} coperti`} tone="neutral" />
-        <StatCard icon={Clock3} value={8} label="Persone in turno" foot="4 sala · 3 cucina · 1 bar" tone="neutral" />
+        <StatCard icon={Clock3} value={staffOnDuty.length} label="Persone in turno" foot={`${staffOnDutyByArea.Sala} sala · ${staffOnDutyByArea.Cucina} cucina · ${staffOnDutyByArea.Bar} bar`} tone="neutral" />
       </div>
 
       <div className="overview-services">
@@ -55,7 +55,7 @@ export default function Overview() {
         <Panel className="manage-panel">
           <SectionTitle>Da gestire</SectionTitle>
           <button onClick={() => navigate("/prenotazioni")}><span className="manage-icon gold"><AlertCircle /></span><span><b>{pending} richieste di prenotazione</b><small>in attesa di conferma</small></span></button>
-          <button onClick={() => navigate("/personale")}><span className="manage-icon green"><Users /></span><span><b>8 persone in servizio</b><small>copertura completa</small></span></button>
+          <button onClick={() => navigate("/personale")}><span className="manage-icon green"><Users /></span><span><b>{staffOnDuty.length} persone in servizio</b><small>copertura del turno odierno</small></span></button>
           <button><span className="manage-icon"><CheckCircle2 /></span><span><b>Nessuna anomalia segnalata</b><small>tutto procede regolarmente</small></span></button>
         </Panel>
       </div>

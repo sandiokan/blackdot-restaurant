@@ -44,18 +44,26 @@ export interface StaffMember {
   name: string;
   role: string;
   area: StaffArea;
+  phone: string;
+  email: string;
   status: StaffStatus;
-  shift: string;
   initials: string;
   accent: string;
 }
 
-export interface ShiftCell {
-  label: string;
-  type: "sala" | "cucina" | "bar" | "riposo";
+export type StaffInput = Omit<StaffMember, "id" | "initials" | "accent">;
+
+export type ShiftStatus = "scheduled" | "rest" | "cancelled";
+
+export interface Shift {
+  id: string;
+  staffId: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  area: StaffArea;
+  status: ShiftStatus;
+  notes: string;
 }
 
-export interface StaffSchedule {
-  staffId: string;
-  shifts: ShiftCell[];
-}
+export type ShiftInput = Omit<Shift, "id">;

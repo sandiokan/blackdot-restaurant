@@ -1,22 +1,39 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
 import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress } from "@/components/shared/Primitives";
 import { addLocalMonths, formatLocalDate, getLocalWeek } from "@/lib/localDate";
-import { countCovers, occupancyTone, reservationsForDate } from "@/lib/reservationMetrics";
+import { countCovers, minutesFromTime, occupancyTone, reservationsByTime, reservationsForDate } from "@/lib/reservationMetrics";
 import type { Reservation } from "@/types/models";
 
 type CalendarView = "Pranzo e Cena" | "Pranzo" | "Cena";
 
+const TIMELINE_START_MINUTES = 11 * 60;
+const TIMELINE_END_MINUTES = 24 * 60;
+const SLOT_MINUTES = 30;
+const SLOT_HEIGHT = 30;
+const MAX_VISIBLE_PER_SLOT = 2;
+const timelineTimes = Array.from(
+  { length: (TIMELINE_END_MINUTES - TIMELINE_START_MINUTES) / SLOT_MINUTES },
+  (_, index) => {
+    const minutes = TIMELINE_START_MINUTES + index * SLOT_MINUTES;
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  },
+);
+const timelineHeight = timelineTimes.length * SLOT_HEIGHT;
+
 export default function CalendarPage() {
-  const { currentDate, restaurant, reservations, setModalOpen } = useAppData();
+  const { currentDate, restaurant, reservations, loading, setModalOpen } = useAppData();
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [view, setView] = useState<CalendarView>("Pranzo e Cena");
+  const knownReservationIds = useRef<Set<string> | null>(null);
   const weekDates = useMemo(() => getLocalWeek(selectedDate), [selectedDate]);
   const selectedReservations = useMemo(() => reservations
     .filter((item) => item.date === selectedDate)
     .filter((item) => view === "Pranzo e Cena" || item.service === view)
     .sort((a, b) => a.time.localeCompare(b.time)), [reservations, selectedDate, view]);
+  const lunchSlots = useMemo(() => reservationsByTime(selectedReservations.filter((item) => item.service === "Pranzo")), [selectedReservations]);
+  const dinnerSlots = useMemo(() => reservationsByTime(selectedReservations.filter((item) => item.service === "Cena")), [selectedReservations]);
   const activeSelectedReservations = reservationsForDate(reservations, selectedDate);
   const lunch = countCovers(activeSelectedReservations, "Pranzo");
   const dinner = countCovers(activeSelectedReservations, "Cena");
@@ -24,6 +41,20 @@ export default function CalendarPage() {
   const dinnerCapacity = restaurant?.dinnerCapacity ?? 0;
   const monthLabel = formatLocalDate(selectedDate, { month: "long", year: "numeric" });
   const dayLabel = formatLocalDate(selectedDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  useEffect(() => {
+    if (loading) return;
+    const currentIds = new Set(reservations.map((item) => item.id));
+    if (knownReservationIds.current === null) {
+      knownReservationIds.current = currentIds;
+      return;
+    }
+    const createdReservation = reservations.find((item) => !knownReservationIds.current?.has(item.id));
+    knownReservationIds.current = currentIds;
+    if (!createdReservation) return;
+    setSelectedDate(createdReservation.date);
+    if (view !== "Pranzo e Cena" && view !== createdReservation.service) setView("Pranzo e Cena");
+  }, [loading, reservations, view]);
 
   function serviceTone(date: string, service: Reservation["service"], capacity: number) {
     const covers = countCovers(reservationsForDate(reservations, date), service);
@@ -37,10 +68,10 @@ export default function CalendarPage() {
     <Panel className="day-schedule">
       <SectionTitle>{dayLabel} <select aria-label="Vista" value={view} onChange={(event) => setView(event.target.value as CalendarView)}><option>Pranzo e Cena</option><option>Pranzo</option><option>Cena</option></select></SectionTitle>
       <div className="service-summary"><ServiceProgress label={`PRANZO · ${restaurant?.lunchOpen ?? "--:--"} – ${restaurant?.lunchClose ?? "--:--"}`} used={lunch} total={lunchCapacity} /><ServiceProgress label={`CENA · ${restaurant?.dinnerOpen ?? "--:--"} – ${restaurant?.dinnerClose ?? "--:--"}`} used={dinner} total={dinnerCapacity} /></div>
-      <div className="schedule-grid">
-        <div className="time-axis">{["11:00", "12:00", "13:00", "14:00", "15:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"].map((time) => <span key={time}>{time}</span>)}</div>
-        <div className="service-column lunch-column">{selectedReservations.filter((item) => item.service === "Pranzo").map((item, index) => <ReservationBlock key={item.id} item={item} top={16 + index * 56} />)}</div>
-        <div className="service-column dinner-column">{selectedReservations.filter((item) => item.service === "Cena").map((item, index) => <ReservationBlock key={item.id} item={item} top={235 + index * 48} />)}</div>
+      <div className="schedule-grid" style={{ height: timelineHeight }}>
+        <div className="time-axis">{timelineTimes.map((time) => <span key={time} style={{ top: slotTop(time) }}>{time}</span>)}</div>
+        <TimelineColumn className="lunch-column" slots={lunchSlots} />
+        <TimelineColumn className="dinner-column" slots={dinnerSlots} />
         {selectedReservations.length === 0 && <div className="schedule-empty">Nessuna prenotazione per il giorno selezionato.</div>}
       </div>
     </Panel>
@@ -48,6 +79,21 @@ export default function CalendarPage() {
   </div>;
 }
 
-function ReservationBlock({ item, top }: { item: Reservation; top: number }) {
-  return <button className={`reservation-block block-${item.status}`} style={{ top }}><b>{item.time}</b><strong>{item.name}</strong><small>{item.guests} persone · {item.table}</small><MoreHorizontal size={16} /></button>;
+function slotTop(time: string) {
+  return ((minutesFromTime(time) - TIMELINE_START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT;
+}
+
+function TimelineColumn({ className, slots }: { className: string; slots: ReturnType<typeof reservationsByTime> }) {
+  return <div className={`service-column ${className}`}>{slots.map(({ time, items }) => {
+    const visible = items.slice(0, MAX_VISIBLE_PER_SLOT);
+    const hidden = items.length - visible.length;
+    return <div key={time} className="reservation-slot-group" style={{ top: slotTop(time) }}>
+      {visible.map((item) => <ReservationBlock key={item.id} item={item} compact={items.length > 1} />)}
+      {hidden > 0 && <span className="reservation-overflow" title={`${hidden} altre prenotazioni alle ${time}`}>+{hidden}</span>}
+    </div>;
+  })}</div>;
+}
+
+function ReservationBlock({ item, compact }: { item: Reservation; compact: boolean }) {
+  return <button className={`reservation-block block-${item.status} ${compact ? "compact" : ""}`} title={`${item.time} · ${item.name} · ${item.guests} persone · ${item.table}`}><b>{item.time}</b><strong>{item.name}</strong><small>{item.guests} persone · {item.table}</small></button>;
 }

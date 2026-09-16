@@ -44,6 +44,21 @@ export function coversByDate(reservations: Reservation[], dates: string[], label
   }));
 }
 
+export function minutesFromTime(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function reservationsByTime(reservations: Reservation[]) {
+  const groups = new Map<string, Reservation[]>();
+  reservations.forEach((reservation) => {
+    groups.set(reservation.time, [...(groups.get(reservation.time) ?? []), reservation]);
+  });
+  return Array.from(groups.entries())
+    .sort(([first], [second]) => first.localeCompare(second))
+    .map(([time, items]) => ({ time, items }));
+}
+
 export function occupancyTone(percent: number) {
   if (percent >= 85) return "red";
   if (percent >= 65) return "gold";

@@ -28,7 +28,7 @@ export function GhostButton({ children, onClick, className = "", type = "button"
   return <button type={type} className={cn("button-ghost", className)} onClick={onClick}>{children}</button>;
 }
 
-export function StatCard({ icon: Icon, value, label, foot, tone = "neutral" }: { icon: ElementType; value: string | number; label: string; foot?: string; tone?: "neutral" | "green" | "gold" | "red" }) {
+export function StatCard({ icon: Icon, value, label, foot, tone = "neutral", showArrow = true }: { icon: ElementType; value: string | number; label: string; foot?: string; tone?: "neutral" | "green" | "gold" | "red"; showArrow?: boolean }) {
   return (
     <Panel className="stat-card">
       <div className={cn("stat-icon", `tone-${tone}`)}><Icon size={21} strokeWidth={1.8} /></div>
@@ -37,7 +37,7 @@ export function StatCard({ icon: Icon, value, label, foot, tone = "neutral" }: {
         <div className="stat-label">{label}</div>
         {foot && <div className={cn("stat-foot", `text-${tone}`)}>{foot}</div>}
       </div>
-      <ChevronRight className="stat-arrow" size={16} />
+      {showArrow && <ChevronRight className="stat-arrow" size={16} />}
     </Panel>
   );
 }

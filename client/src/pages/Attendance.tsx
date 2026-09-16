@@ -37,7 +37,7 @@ export default function Attendance() {
 
   return <div className="page attendance-page">
     <PageHeader title="Affluenza" description="Analizza l’andamento delle prenotazioni e dell’occupazione." action={<Segmented options={["Oggi", "Questa settimana", "Questo mese"] as AttendanceRange[]} value={range} onChange={setRange} />} />
-    <div className="stats-grid four"><StatCard icon={Users} value={totalCovers} label="Coperti prenotati" /><StatCard icon={Armchair} value={Math.max(0, periodCapacity - totalCovers)} label="Posti disponibili" /><StatCard icon={TrendingUp} value={`${occupancy}%`} label="Occupazione" tone="green" /><StatCard icon={Clock3} value={turnover} label="Turnover medio" /></div>
+    <div className="stats-grid four"><StatCard icon={Users} value={totalCovers} label="Coperti prenotati" showArrow={false} /><StatCard icon={Armchair} value={Math.max(0, periodCapacity - totalCovers)} label="Posti disponibili" showArrow={false} /><StatCard icon={TrendingUp} value={`${occupancy}%`} label="Occupazione" tone="green" showArrow={false} /><StatCard icon={Clock3} value={turnover} label="Turnover medio" showArrow={false} /></div>
     <div className="attendance-grid">
       <Panel className="occupancy-chart-panel"><SectionTitle>{chartTitle}</SectionTitle>{chartData.some((item) => item.value > 0) ? <div className={`bar-chart large ${chartClass}`}>{chartData.map((item) => {
         const referenceCapacity = range === "Oggi" ? (item.key < "17:00" ? lunchCapacity : dinnerCapacity) : dailyCapacity;

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import ReservationDetail from "@/components/ReservationDetail";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAppData } from "@/contexts/AppDataContext";
-import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress } from "@/components/shared/Primitives";
+import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatusBadge } from "@/components/shared/Primitives";
 import { addLocalMonths, formatLocalDate, getLocalWeek } from "@/lib/localDate";
 import { countCovers, minutesFromTime, occupancyTone, reservationsByTime, reservationsForDate } from "@/lib/reservationMetrics";
 import type { Reservation } from "@/types/models";
@@ -23,9 +25,10 @@ const timelineTimes = Array.from(
 const timelineHeight = timelineTimes.length * SLOT_HEIGHT;
 
 export default function CalendarPage() {
-  const { currentDate, restaurant, reservations, loading, setModalOpen } = useAppData();
+  const { currentDate, restaurant, reservations, loading, setModalOpen, updateReservationStatus } = useAppData();
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [view, setView] = useState<CalendarView>("Pranzo e Cena");
+  const [detailReservationId, setDetailReservationId] = useState<string | null>(null);
   const knownReservationIds = useRef<Set<string> | null>(null);
   const weekDates = useMemo(() => getLocalWeek(selectedDate), [selectedDate]);
   const selectedReservations = useMemo(() => reservations
@@ -41,6 +44,7 @@ export default function CalendarPage() {
   const dinnerCapacity = restaurant?.dinnerCapacity ?? 0;
   const monthLabel = formatLocalDate(selectedDate, { month: "long", year: "numeric" });
   const dayLabel = formatLocalDate(selectedDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const detailReservation = reservations.find((item) => item.id === detailReservationId);
 
   useEffect(() => {
     if (loading) return;
@@ -70,12 +74,13 @@ export default function CalendarPage() {
       <div className="service-summary"><ServiceProgress label={`PRANZO · ${restaurant?.lunchOpen ?? "--:--"} – ${restaurant?.lunchClose ?? "--:--"}`} used={lunch} total={lunchCapacity} /><ServiceProgress label={`CENA · ${restaurant?.dinnerOpen ?? "--:--"} – ${restaurant?.dinnerClose ?? "--:--"}`} used={dinner} total={dinnerCapacity} /></div>
       <div className="schedule-grid" style={{ height: timelineHeight }}>
         <div className="time-axis">{timelineTimes.map((time) => <span key={time} style={{ top: slotTop(time) }}>{time}</span>)}</div>
-        <TimelineColumn className="lunch-column" slots={lunchSlots} />
-        <TimelineColumn className="dinner-column" slots={dinnerSlots} />
+        <TimelineColumn className="lunch-column" slots={lunchSlots} onSelect={setDetailReservationId} />
+        <TimelineColumn className="dinner-column" slots={dinnerSlots} onSelect={setDetailReservationId} />
         {selectedReservations.length === 0 && <div className="schedule-empty">Nessuna prenotazione per il giorno selezionato.</div>}
       </div>
     </Panel>
     <div className="calendar-legend"><span><i className="green" />Confermata</span><span><i className="gold" />In attesa</span><span><i className="red" />Cancellata</span><span><i className="gray" />Completata</span></div>
+    {detailReservation && <ReservationDetail item={detailReservation} open onClose={() => setDetailReservationId(null)} onStatus={(status) => updateReservationStatus(detailReservation.id, status)} overlay />}
   </div>;
 }
 
@@ -83,15 +88,29 @@ function slotTop(time: string) {
   return ((minutesFromTime(time) - TIMELINE_START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT;
 }
 
-function TimelineColumn({ className, slots }: { className: string; slots: ReturnType<typeof reservationsByTime> }) {
+function TimelineColumn({ className, slots, onSelect }: { className: string; slots: ReturnType<typeof reservationsByTime>; onSelect: (id: string) => void }) {
   return <div className={`service-column ${className}`}>{slots.map(({ time, items }) => {
     const visible = items.slice(0, MAX_VISIBLE_PER_SLOT);
-    const hidden = items.length - visible.length;
+    const hidden = items.slice(MAX_VISIBLE_PER_SLOT);
     return <div key={time} className="reservation-slot-group" style={{ top: slotTop(time) }}>
       {visible.map((item) => <ReservationBlock key={item.id} item={item} compact={items.length > 1} />)}
-      {hidden > 0 && <span className="reservation-overflow" title={`${hidden} altre prenotazioni alle ${time}`}>+{hidden}</span>}
+      {hidden.length > 0 && <HiddenReservationsPopover time={time} items={hidden} onSelect={onSelect} />}
     </div>;
   })}</div>;
+}
+
+function HiddenReservationsPopover({ time, items, onSelect }: { time: string; items: Reservation[]; onSelect: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger asChild><button className="reservation-overflow" aria-label={`Mostra ${items.length} prenotazioni nascoste alle ${time}`}>+{items.length}</button></PopoverTrigger>
+    <PopoverContent className="reservation-overflow-popover" align="end" side="top" sideOffset={8}>
+      <strong className="overflow-popover-title">Altre prenotazioni · {time}</strong>
+      <div className="overflow-reservation-list">{items.map((item) => <button key={item.id} onClick={() => { setOpen(false); onSelect(item.id); }}>
+        <span><b>{item.name}</b><small>{item.time} · {item.guests} coperti · {item.table || "Da assegnare"}</small></span>
+        <StatusBadge status={item.status} />
+      </button>)}</div>
+    </PopoverContent>
+  </Popover>;
 }
 
 function ReservationBlock({ item, compact }: { item: Reservation; compact: boolean }) {

@@ -31,10 +31,10 @@ export default function Overview() {
 
       <div className="weather-mobile panel"><span>☀</span><b>23°</b><small>Brescia · Cielo sereno</small></div>
       <div className="stats-grid four">
-        <StatCard icon={CalendarDays} value={todayReservations.length} label="Prenotazioni oggi" foot={pending > 0 ? `${pending} in attesa` : "Nessuna richiesta in attesa"} tone={pending > 0 ? "gold" : "green"} />
-        <StatCard icon={Users} value={totalCovers} label="Coperti prenotati" foot={`${occupancyPercent}% della capienza giornaliera`} tone="neutral" />
-        <StatCard icon={Table2} value={Math.max(0, totalCapacity - totalCovers)} label="Posti disponibili" foot={`su ${totalCapacity} coperti`} tone="neutral" />
-        <StatCard icon={Clock3} value={staffOnDuty.length} label="Persone in turno" foot={`${staffOnDutyByArea.Sala} sala · ${staffOnDutyByArea.Cucina} cucina · ${staffOnDutyByArea.Bar} bar`} tone="neutral" />
+        <StatCard icon={CalendarDays} value={todayReservations.length} label="Prenotazioni oggi" foot={pending > 0 ? `${pending} in attesa` : "Nessuna richiesta in attesa"} tone={pending > 0 ? "gold" : "green"} showArrow={false} />
+        <StatCard icon={Users} value={totalCovers} label="Coperti prenotati" foot={`${occupancyPercent}% della capienza giornaliera`} tone="neutral" showArrow={false} />
+        <StatCard icon={Table2} value={Math.max(0, totalCapacity - totalCovers)} label="Posti disponibili" foot={`su ${totalCapacity} coperti`} tone="neutral" showArrow={false} />
+        <StatCard icon={Clock3} value={staffOnDuty.length} label="Persone in turno" foot={`${staffOnDutyByArea.Sala} sala · ${staffOnDutyByArea.Cucina} cucina · ${staffOnDutyByArea.Bar} bar`} tone="neutral" showArrow={false} />
       </div>
 
       <div className="overview-services">

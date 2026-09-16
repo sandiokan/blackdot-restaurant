@@ -2,9 +2,10 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Bell, CalendarDays, ChartNoAxesColumnIncreasing, ChefHat, ChevronDown,
-  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList,
+  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppData } from "@/contexts/AppDataContext";
 
 const navItems = [
   { href: "/", label: "Overview", icon: Home },
@@ -19,13 +20,15 @@ const navItems = [
 export default function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileMenu, setMobileMenu] = useState(false);
+  const { restaurant, loading, error, reloadData } = useAppData();
   const active = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
+  const [restaurantLead, ...restaurantTail] = (restaurant?.name ?? "Ristorante").split(" ");
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand"><span>BLACKDOT</span><small>RESTAURANT</small></div>
-        <button className="restaurant-switcher"><ChefHat size={22} /><span><b>Osteria</b><small>delle Streghe</small></span><ChevronDown size={16} /></button>
+        <button className="restaurant-switcher"><ChefHat size={22} /><span><b>{restaurantLead}</b><small>{restaurantTail.join(" ") || "BLACKDOT"}</small></span><ChevronDown size={16} /></button>
         <nav className="side-nav">
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href} className={cn("side-nav-link", active(href) && "active")}>
@@ -45,7 +48,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="user-profile"><span className="user-avatar">LR</span><span><b>Ludovico Rossi</b><small>Proprietario</small></span><ChevronDown size={15} /></div>
           </div>
         </header>
-        <main className="content">{children}</main>
+        <main className="content">
+          {loading && <div className="data-state loading"><RefreshCw size={15} />Caricamento dati...</div>}
+          {error && <div className="data-state error"><span>{error}</span><button onClick={() => void reloadData()}>Riprova</button></div>}
+          {children}
+        </main>
       </div>
 
       <nav className="mobile-bottom-nav">

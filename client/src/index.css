@@ -131,6 +131,11 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
 .user-profile small { color: #889092; font-size: 11px; }
 .mobile-menu-trigger, .mobile-bottom-nav, .mobile-menu-backdrop { display: none; }
 .content { width: 100%; padding: 27px 34px 48px; }
+.data-state { width: min(1360px, 100%); min-height: 38px; display: flex; align-items: center; gap: 9px; margin: 0 auto 14px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; color: #aeb6b3; background: #12181a; font-size: 10px; }
+.data-state.loading svg { color: var(--gold); animation: spin 1s linear infinite; }
+.data-state.error { justify-content: space-between; color: #f08a86; border-color: rgba(239,85,82,.3); background: rgba(100,30,30,.12); }
+.data-state.error button { padding: 5px 9px; border: 1px solid rgba(239,85,82,.35); border-radius: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .page { width: min(1360px, 100%); margin: 0 auto; animation: fade-up .38s var(--ease-out) both; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
@@ -397,6 +402,7 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
 .dialog-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; }
 .dialog-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }.dialog-form .field:nth-child(n+3) { grid-column: 1 / -1; }
 .time-options { display: flex; flex-wrap: wrap; gap: 6px; }.time-options button { min-width: 55px; height: 34px; border: 1px solid var(--line); border-radius: 6px; background: #141b1d; font-size: 9px; }.time-options button.active { color: #ffe4c0; border-color: var(--gold); background: rgba(238,179,109,.1); }
+.custom-date-input { min-height: 38px; margin-top: 8px; padding: 8px 10px; }
 .inline-field { flex-direction: row; align-items: center; justify-content: space-between; }.stepper { display: flex; align-items: center; gap: 16px; }.stepper button { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: #151c1e; }
 .availability-panel { padding: 17px; border: 1px solid var(--line); border-radius: 9px; background: linear-gradient(145deg,#121a1b,#101517); }
 .availability-panel > p { margin: 0 0 15px; color: #9ca4a3; font-size: 9px; font-weight: 600; }

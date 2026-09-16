@@ -6,10 +6,13 @@ import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatCa
 
 export default function Overview() {
   const [, navigate] = useLocation();
-  const { reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, setModalOpen } = useAppData();
+  const { restaurant, reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, setModalOpen } = useAppData();
   const todayReservations = reservations.filter((item) => item.date === TODAY);
   const pending = activeReservations.filter((item) => item.status === "pending").length;
   const upcoming = activeReservations.filter((item) => item.service === "Cena").slice(0, 5);
+  const lunchCapacity = restaurant?.lunchCapacity ?? 80;
+  const dinnerCapacity = restaurant?.dinnerCapacity ?? 80;
+  const totalCapacity = lunchCapacity + dinnerCapacity;
 
   return (
     <div className="page overview-page">
@@ -23,14 +26,14 @@ export default function Overview() {
       <div className="weather-mobile panel"><span>☀</span><b>23°</b><small>Brescia · Cielo sereno</small></div>
       <div className="stats-grid four">
         <StatCard icon={CalendarDays} value={todayReservations.length} label="Prenotazioni oggi" foot={`+${pending} in attesa`} tone="green" />
-        <StatCard icon={Users} value={totalCovers} label="Coperti prenotati" foot={`${Math.round(totalCovers)}% della capienza`} tone="neutral" />
-        <StatCard icon={Table2} value={100 - totalCovers} label="Posti disponibili" foot="su 100 coperti" tone="neutral" />
+        <StatCard icon={Users} value={totalCovers} label="Coperti prenotati" foot={`${Math.round((totalCovers / totalCapacity) * 100)}% della capienza giornaliera`} tone="neutral" />
+        <StatCard icon={Table2} value={Math.max(0, totalCapacity - totalCovers)} label="Posti disponibili" foot={`su ${totalCapacity} coperti`} tone="neutral" />
         <StatCard icon={Clock3} value={8} label="Persone in turno" foot="4 sala · 3 cucina · 1 bar" tone="neutral" />
       </div>
 
       <div className="overview-services">
-        <Panel className="service-card"><ServiceProgress label="PRANZO · 12:00 – 15:00" used={lunchCovers} /></Panel>
-        <Panel className="service-card"><ServiceProgress label="CENA · 19:00 – 23:00" used={dinnerCovers} /></Panel>
+        <Panel className="service-card"><ServiceProgress label={`PRANZO · ${restaurant?.lunchOpen ?? "12:00"} – ${restaurant?.lunchClose ?? "15:00"}`} used={lunchCovers} total={lunchCapacity} /></Panel>
+        <Panel className="service-card"><ServiceProgress label={`CENA · ${restaurant?.dinnerOpen ?? "19:00"} – ${restaurant?.dinnerClose ?? "23:00"}`} used={dinnerCovers} total={dinnerCapacity} /></Panel>
         <Panel className="atmosphere-card"><div className="atmosphere-glow" /><Sparkles size={20} /><p>“La buona cucina<br />è un atto d’amore.”</p><small>BLACKDOT</small></Panel>
       </div>
 

@@ -2,6 +2,24 @@ export type ReservationStatus = "confirmed" | "pending" | "cancelled" | "complet
 export type ServiceType = "Pranzo" | "Cena";
 export type ReservationSource = "Telefono" | "Sito" | "WhatsApp" | "Walk-in";
 
+export interface Restaurant {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  lunchOpen: string;
+  lunchClose: string;
+  lunchCapacity: number;
+  dinnerOpen: string;
+  dinnerClose: string;
+  dinnerCapacity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RestaurantUpdate = Omit<Restaurant, "id" | "createdAt" | "updatedAt">;
+
 export interface Reservation {
   id: string;
   date: string;
@@ -15,6 +33,8 @@ export interface Reservation {
   table: string;
   service: ServiceType;
 }
+
+export type NewReservation = Omit<Reservation, "id">;
 
 export type StaffArea = "Sala" | "Cucina" | "Bar" | "Amministrazione";
 export type StaffStatus = "working" | "upcoming" | "absent";

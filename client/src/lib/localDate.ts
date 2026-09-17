@@ -1,13 +1,32 @@
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+export const DEFAULT_RESTAURANT_TIME_ZONE = "Europe/Rome";
 
-export function getLocalDateKey(date = new Date()) {
+export function getLocalDateKey(date = new Date(), timeZone?: string) {
+  if (timeZone) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${value.year}-${value.month}-${value.day}`;
+  }
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
-export function getLocalTimeKey(date = new Date()) {
+export function getLocalTimeKey(date = new Date(), timeZone?: string) {
+  if (timeZone) {
+    return new Intl.DateTimeFormat("it-IT", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(date);
+  }
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
@@ -45,6 +64,14 @@ export function getLocalMonth(dateKey: string) {
   const days = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12).getDate();
   const first = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
   return Array.from({ length: days }, (_, index) => addLocalDays(first, index));
+}
+
+export function getLocalDateRange(start: string, end: string) {
+  const first = start <= end ? start : end;
+  const last = start <= end ? end : start;
+  const dates: string[] = [];
+  for (let date = first; date <= last; date = addLocalDays(date, 1)) dates.push(date);
+  return dates;
 }
 
 export function formatLocalDate(dateKey: string, options: Intl.DateTimeFormatOptions) {

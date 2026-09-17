@@ -14,7 +14,8 @@ function displayTime(value: string | null) {
 }
 
 function shiftLabel(shift?: Shift) {
-  if (!shift || shift.status === "rest") return "Riposo";
+  if (!shift) return "—";
+  if (shift.status === "rest") return "Riposo";
   if (shift.status === "cancelled") return "Turno annullato";
   return `${displayTime(shift.startTime)} – ${displayTime(shift.endTime)}`;
 }
@@ -40,7 +41,9 @@ export default function Staff() {
     <div className="staff-layout">
       <div className="staff-content"><div className="staff-grid">{visible.map((person) => {
         const todayShift = todayShifts.get(person.id);
-        return <Panel key={person.id} className="staff-card" interactive><button className="staff-more" onClick={() => setEditing(person)} aria-label={`Modifica ${person.name}`}><MoreVertical size={18} /></button><Avatar initials={person.initials} color={person.accent} size="lg" /><div className="staff-identity"><h3>{person.name}</h3><p>{person.role}</p></div><div className={`staff-status staff-${person.status}`}><i />{person.status === "working" ? "In servizio" : person.status === "upcoming" ? "In servizio più tardi" : "Non in servizio"}</div><strong>{shiftLabel(todayShift)}</strong></Panel>;
+        const isOnDuty = staffOnDuty.some((item) => item.id === person.id);
+        const hasScheduledShift = todayShift?.status === "scheduled";
+        return <Panel key={person.id} className="staff-card" interactive><button className="staff-more" onClick={() => setEditing(person)} aria-label={`Modifica ${person.name}`}><MoreVertical size={18} /></button><Avatar initials={person.initials} color={person.accent} size="lg" /><div className="staff-identity"><h3>{person.name}</h3><p>{person.role}</p></div><div className={`staff-status staff-${isOnDuty ? "working" : hasScheduledShift ? "upcoming" : "absent"}`}><i />{isOnDuty ? "In servizio" : hasScheduledShift ? "Turno assegnato" : "Non in servizio"}</div><strong>{shiftLabel(todayShift)}</strong></Panel>;
       })}</div>
         <Panel className="shift-summary"><SectionTitle>Riepilogo turno di oggi</SectionTitle><div><span><UserCheck />Persone in servizio<b>{staffOnDuty.length}</b></span><span>Sala<b>{staffOnDutyByArea.Sala}</b></span><span>Cucina<b>{staffOnDutyByArea.Cucina}</b></span><span>Bar<b>{staffOnDutyByArea.Bar}</b></span></div></Panel>
       </div>

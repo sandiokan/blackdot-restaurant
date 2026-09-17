@@ -237,6 +237,9 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
 .date-nav button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: #111719; }
 .date-nav svg { width: 16px; }
 .date-nav b { white-space: nowrap; font-size: 11px; }
+.reservation-custom-range { display: flex; justify-content: flex-end; gap: 8px; margin: -5px 0 13px; }
+.reservation-custom-range label { display: flex; align-items: center; gap: 6px; color: #899294; font-size: 9px; }
+.reservation-custom-range input { min-height: 36px; padding: 7px 9px; font-size: 9px; }
 .compact-stats .stat-card { min-height: 72px; }
 .filter-row { display: grid; grid-template-columns: minmax(220px, 1fr) 140px 180px auto; gap: 8px; margin: 13px 0; }
 .search-field { display: flex; align-items: center; gap: 9px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #12181a; color: #81898a; }

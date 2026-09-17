@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { getLocalDateKey } from "@/lib/localDate";
+import { addLocalDays, DEFAULT_RESTAURANT_TIME_ZONE, getLocalDateKey, getLocalTimeKey } from "@/lib/localDate";
 import { countCovers, reservationsForDate } from "@/lib/reservationMetrics";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { NewReservation, Reservation, Restaurant, RestaurantUpdate, Shift, ShiftInput, StaffArea, StaffInput, StaffMember } from "@/types/models";
@@ -170,7 +170,15 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function shiftIncludesDateTime(shift: Shift, date: string, time: string) {
+  if (shift.status !== "scheduled" || !shift.startTime || !shift.endTime) return false;
+  if (shift.startTime <= shift.endTime) return shift.date === date && shift.startTime <= time && time < shift.endTime;
+  return (shift.date === date && time >= shift.startTime) || (addLocalDays(shift.date, 1) === date && time < shift.endTime);
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const [currentDate, setCurrentDate] = useState(() => getLocalDateKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE));
+  const [currentTime, setCurrentTime] = useState(() => getLocalTimeKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE));
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -225,6 +233,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void reloadData();
   }, [reloadData]);
+
+  useEffect(() => {
+    const refreshCurrentDate = () => {
+      const now = new Date();
+      const nextDate = getLocalDateKey(now, DEFAULT_RESTAURANT_TIME_ZONE);
+      const nextTime = getLocalTimeKey(now, DEFAULT_RESTAURANT_TIME_ZONE);
+      setCurrentDate((current) => current === nextDate ? current : nextDate);
+      setCurrentTime((current) => current === nextTime ? current : nextTime);
+    };
+    const interval = window.setInterval(refreshCurrentDate, 60_000);
+    window.addEventListener("focus", refreshCurrentDate);
+    document.addEventListener("visibilitychange", refreshCurrentDate);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshCurrentDate);
+      document.removeEventListener("visibilitychange", refreshCurrentDate);
+    };
+  }, []);
 
   const saveRestaurant = useCallback(async (updates: RestaurantUpdate) => {
     if (!supabase || !restaurant) throw new Error("Ristorante non disponibile.");
@@ -437,12 +463,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [restaurant]);
 
   const value = useMemo(() => {
-    const currentDate = getLocalDateKey();
     const activeReservations = reservationsForDate(reservations, currentDate);
     const lunchCovers = countCovers(activeReservations, "Pranzo");
     const dinnerCovers = countCovers(activeReservations, "Cena");
-    const onDutyIds = new Set(shifts.filter((shift) => shift.date === currentDate && shift.status === "scheduled").map((shift) => shift.staffId));
-    const staffOnDuty = staff.filter((person) => onDutyIds.has(person.id) && person.status !== "absent");
+    const onDutyIds = new Set(shifts.filter((shift) => shiftIncludesDateTime(shift, currentDate, currentTime)).map((shift) => shift.staffId));
+    const staffOnDuty = staff.filter((person) => onDutyIds.has(person.id));
     const staffOnDutyByArea = staffOnDuty.reduce<Record<StaffArea, number>>((counts, person) => {
       counts[person.area] += 1;
       return counts;
@@ -474,7 +499,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addShift,
       updateShift,
     };
-  }, [restaurant, reservations, staff, shifts, loading, saving, error, modalOpen, reloadData, saveRestaurant, addReservation, updateReservationStatus, addStaff, updateStaff, addShift, updateShift]);
+  }, [currentDate, currentTime, restaurant, reservations, staff, shifts, loading, saving, error, modalOpen, reloadData, saveRestaurant, addReservation, updateReservationStatus, addStaff, updateStaff, addShift, updateShift]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

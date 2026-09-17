@@ -1,19 +1,13 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, PageHeader, Panel, PrimaryButton, Segmented } from "@/components/shared/Primitives";
 import { useAppData } from "@/contexts/AppDataContext";
+import { addLocalDays, addLocalMonths, formatLocalDate, getLocalMonth, getLocalWeek } from "@/lib/localDate";
 import type { Shift, ShiftInput, ShiftStatus, StaffArea } from "@/types/models";
 
-const baseWeekStart = "2026-09-15";
-
 type ShiftEditor = { shift: Shift | null; staffId: string; date: string };
-
-function addDays(dateString: string, days: number) {
-  const date = new Date(`${dateString}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toLocaleDateString("en-CA");
-}
+type ShiftView = "Oggi" | "Settimana" | "Mese";
 
 function displayTime(value: string | null) {
   if (!value) return "";
@@ -32,32 +26,43 @@ function shiftClass(shift?: Shift) {
   return shift.area.toLowerCase() as Lowercase<StaffArea>;
 }
 
-function dayParts(dateString: string) {
-  const date = new Date(`${dateString}T12:00:00`);
-  const weekday = new Intl.DateTimeFormat("it-IT", { weekday: "short" }).format(date);
-  return [weekday.slice(0, 3), String(date.getDate())];
+function dayParts(date: string) {
+  return [formatLocalDate(date, { weekday: "short" }).slice(0, 3), formatLocalDate(date, { day: "numeric" })];
 }
 
-function weekLabel(start: string, end: string) {
-  const startDate = new Date(`${start}T12:00:00`);
-  const endDate = new Date(`${end}T12:00:00`);
-  const month = new Intl.DateTimeFormat("it-IT", { month: "long" }).format(endDate);
-  return `${startDate.getDate()} – ${endDate.getDate()} ${month} ${endDate.getFullYear()}`;
+function periodLabel(view: ShiftView, dates: string[]) {
+  if (view === "Oggi") return formatLocalDate(dates[0], { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  if (view === "Mese") return formatLocalDate(dates[0], { month: "long", year: "numeric" });
+  return `${formatLocalDate(dates[0], { day: "numeric" })} – ${formatLocalDate(dates[dates.length - 1], { day: "numeric", month: "long", year: "numeric" })}`;
 }
 
 export default function Shifts() {
-  const { staff, shifts, saving, addShift, updateShift } = useAppData();
-  const [view, setView] = useState("Settimana");
-  const [week, setWeek] = useState(0);
+  const { currentDate, staff, shifts, saving, addShift, updateShift } = useAppData();
+  const [view, setView] = useState<ShiftView>("Settimana");
+  const [selectedDate, setSelectedDate] = useState(currentDate);
   const [editor, setEditor] = useState<ShiftEditor | null>(null);
-  const weekStart = addDays(baseWeekStart, week * 7);
-  const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const dates = useMemo(() => view === "Oggi" ? [selectedDate] : view === "Mese" ? getLocalMonth(selectedDate) : getLocalWeek(selectedDate), [view, selectedDate]);
   const shiftsByStaffAndDate = useMemo(() => new Map(shifts.map((shift) => [`${shift.staffId}:${shift.date}`, shift])), [shifts]);
+  const gridStyle = { gridTemplateColumns: `160px repeat(${dates.length}, minmax(72px, 1fr))` } as CSSProperties;
+  const tableStyle = { minWidth: `${Math.max(810, 160 + dates.length * 78)}px` } as CSSProperties;
+
+  useEffect(() => {
+    if (view === "Oggi") setSelectedDate(currentDate);
+  }, [currentDate, view]);
+
+  function changeView(next: ShiftView) {
+    setView(next);
+    if (next === "Oggi") setSelectedDate(currentDate);
+  }
+
+  function navigatePeriod(direction: number) {
+    setSelectedDate((date) => view === "Mese" ? addLocalMonths(date, direction) : addLocalDays(date, direction * (view === "Settimana" ? 7 : 1)));
+  }
 
   return <div className="page shifts-page">
     <PageHeader title="Turni" description="Organizza i turni di lavoro del tuo staff." action={<PrimaryButton onClick={() => staff[0] ? setEditor({ shift: null, staffId: staff[0].id, date: dates[0] }) : toast.error("Aggiungi prima un membro del personale")}><Plus size={18} />Nuovo turno</PrimaryButton>} />
-    <div className="shift-toolbar"><div className="date-nav"><button onClick={() => setWeek((value) => value - 1)}><ChevronLeft /></button><b>{weekLabel(dates[0], dates[6])}</b><button onClick={() => setWeek((value) => value + 1)}><ChevronRight /></button></div><Segmented options={["Oggi", "Settimana", "Mese"]} value={view} onChange={setView} /></div>
-    <Panel className="schedule-table-panel"><div className="shift-table"><div className="shift-grid header"><div />{dates.map((date) => <div key={date}>{dayParts(date).map((part) => <span key={part}>{part}</span>)}</div>)}</div>{staff.map((person) => <div className="shift-grid row" key={person.id}><div className="shift-person"><Avatar initials={person.initials} color={person.accent} size="sm" /><b>{person.name}</b></div>{dates.map((date) => { const shift = shiftsByStaffAndDate.get(`${person.id}:${date}`); return <button key={`${person.id}-${date}`} className={`shift-cell shift-${shiftClass(shift)}`} onClick={() => setEditor({ shift: shift ?? null, staffId: person.id, date })}>{shiftLabel(shift)}</button>; })}</div>)}</div></Panel>
+    <div className="shift-toolbar"><div className="date-nav"><button onClick={() => navigatePeriod(-1)} aria-label="Periodo precedente"><ChevronLeft /></button><b>{periodLabel(view, dates)}</b><button onClick={() => navigatePeriod(1)} aria-label="Periodo successivo"><ChevronRight /></button></div><Segmented options={["Oggi", "Settimana", "Mese"] as ShiftView[]} value={view} onChange={changeView} /></div>
+    <Panel className="schedule-table-panel"><div className="shift-table" style={tableStyle}><div className="shift-grid header" style={gridStyle}><div />{dates.map((date) => <div key={date}>{dayParts(date).map((part) => <span key={part}>{part}</span>)}</div>)}</div>{staff.map((person) => <div className="shift-grid row" style={gridStyle} key={person.id}><div className="shift-person"><Avatar initials={person.initials} color={person.accent} size="sm" /><b>{person.name}</b></div>{dates.map((date) => { const shift = shiftsByStaffAndDate.get(`${person.id}:${date}`); return <button key={`${person.id}-${date}`} className={`shift-cell shift-${shiftClass(shift)}`} onClick={() => setEditor({ shift: shift ?? null, staffId: person.id, date })}>{shiftLabel(shift)}</button>; })}</div>)}</div></Panel>
     <div className="shift-legend"><span><i className="sala" />Turno sala</span><span><i className="cucina" />Turno cucina</span><span><i className="bar" />Turno bar</span><span><i className="riposo" />Riposo</span></div>
     {editor && <ShiftDialog editor={editor} saving={saving} staff={staff} onClose={() => setEditor(null)} onSave={async (input) => {
       try {

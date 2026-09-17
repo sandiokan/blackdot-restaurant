@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { AlertCircle, CalendarDays, CheckCircle2, Clock3, Plus, Sparkles, Table2, Users } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
-import { formatLocalDate, getLocalTimeKey } from "@/lib/localDate";
+import { DEFAULT_RESTAURANT_TIME_ZONE, formatLocalDate, getLocalTimeKey } from "@/lib/localDate";
 import { coversByTime, occupancyTone } from "@/lib/reservationMetrics";
 import { EmptyState, PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatCard, StatusBadge } from "@/components/shared/Primitives";
 
@@ -10,7 +10,7 @@ export default function Overview() {
   const { currentDate, restaurant, reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, staffOnDuty, staffOnDutyByArea, setModalOpen } = useAppData();
   const todayReservations = reservations.filter((item) => item.date === currentDate);
   const pending = activeReservations.filter((item) => item.status === "pending").length;
-  const currentTime = getLocalTimeKey();
+  const currentTime = getLocalTimeKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE);
   const upcoming = activeReservations.filter((item) => item.time >= currentTime).sort((a, b) => a.time.localeCompare(b.time)).slice(0, 5);
   const hourlyCovers = coversByTime(activeReservations);
   const maxHourlyCovers = Math.max(1, ...hourlyCovers.map((item) => item.value));

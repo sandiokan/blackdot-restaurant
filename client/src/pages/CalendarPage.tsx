@@ -9,20 +9,52 @@ import { countCovers, minutesFromTime, occupancyTone, reservationsByTime, reserv
 import type { Reservation } from "@/types/models";
 
 type CalendarView = "Pranzo e Cena" | "Pranzo" | "Cena";
+type TimelineRow = { kind: "service" | "closed"; start: number; end: number; top: number; height: number; label?: string };
+type TimelineLayout = { rows: TimelineRow[]; height: number; topForTime: (time: string) => number };
 
-const TIMELINE_START_MINUTES = 11 * 60;
-const TIMELINE_END_MINUTES = 24 * 60;
 const SLOT_MINUTES = 30;
-const SLOT_HEIGHT = 30;
+const SERVICE_SLOT_HEIGHT = 46;
+const CLOSED_ROW_HEIGHT = 34;
 const MAX_VISIBLE_PER_SLOT = 2;
-const timelineTimes = Array.from(
-  { length: (TIMELINE_END_MINUTES - TIMELINE_START_MINUTES) / SLOT_MINUTES },
-  (_, index) => {
-    const minutes = TIMELINE_START_MINUTES + index * SLOT_MINUTES;
-    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-  },
-);
-const timelineHeight = timelineTimes.length * SLOT_HEIGHT;
+
+function formatMinutes(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function buildTimeline(lunchOpen: string, lunchClose: string, dinnerOpen: string, dinnerClose: string): TimelineLayout {
+  const services = [
+    { start: minutesFromTime(lunchOpen), end: minutesFromTime(lunchClose) },
+    { start: minutesFromTime(dinnerOpen), end: minutesFromTime(dinnerClose) },
+  ].filter((service) => service.end > service.start).sort((a, b) => a.start - b.start);
+
+  const rows: TimelineRow[] = [];
+  let offset = 0;
+  let previousEnd = services[0]?.start ?? 0;
+
+  services.forEach((service) => {
+    if (service.start > previousEnd) {
+      rows.push({ kind: "closed", start: previousEnd, end: service.start, top: offset, height: CLOSED_ROW_HEIGHT, label: `Chiuso ${formatMinutes(previousEnd)}–${formatMinutes(service.start)}` });
+      offset += CLOSED_ROW_HEIGHT;
+    }
+
+    for (let start = service.start; start < service.end; start += SLOT_MINUTES) {
+      const end = Math.min(start + SLOT_MINUTES, service.end);
+      const height = SERVICE_SLOT_HEIGHT * ((end - start) / SLOT_MINUTES);
+      rows.push({ kind: "service", start, end, top: offset, height });
+      offset += height;
+    }
+    previousEnd = Math.max(previousEnd, service.end);
+  });
+
+  const topForTime = (time: string) => {
+    const minutes = minutesFromTime(time);
+    const row = rows.find((item) => item.kind === "service" && minutes >= item.start && minutes <= item.end);
+    if (!row) return 0;
+    return row.top + ((minutes - row.start) / (row.end - row.start)) * row.height;
+  };
+
+  return { rows, height: offset, topForTime };
+}
 
 export default function CalendarPage() {
   const { currentDate, restaurant, reservations, loading, setModalOpen, updateReservationStatus } = useAppData();
@@ -31,6 +63,7 @@ export default function CalendarPage() {
   const [detailReservationId, setDetailReservationId] = useState<string | null>(null);
   const knownReservationIds = useRef<Set<string> | null>(null);
   const weekDates = useMemo(() => getLocalWeek(selectedDate), [selectedDate]);
+  const timeline = useMemo(() => buildTimeline(restaurant?.lunchOpen ?? "12:00", restaurant?.lunchClose ?? "15:00", restaurant?.dinnerOpen ?? "19:00", restaurant?.dinnerClose ?? "23:00"), [restaurant?.lunchOpen, restaurant?.lunchClose, restaurant?.dinnerOpen, restaurant?.dinnerClose]);
   const selectedReservations = useMemo(() => reservations
     .filter((item) => item.date === selectedDate)
     .filter((item) => view === "Pranzo e Cena" || item.service === view)
@@ -72,10 +105,11 @@ export default function CalendarPage() {
     <Panel className="day-schedule">
       <SectionTitle>{dayLabel} <select aria-label="Vista" value={view} onChange={(event) => setView(event.target.value as CalendarView)}><option>Pranzo e Cena</option><option>Pranzo</option><option>Cena</option></select></SectionTitle>
       <div className="service-summary"><ServiceProgress label={`PRANZO · ${restaurant?.lunchOpen ?? "--:--"} – ${restaurant?.lunchClose ?? "--:--"}`} used={lunch} total={lunchCapacity} /><ServiceProgress label={`CENA · ${restaurant?.dinnerOpen ?? "--:--"} – ${restaurant?.dinnerClose ?? "--:--"}`} used={dinner} total={dinnerCapacity} /></div>
-      <div className="schedule-grid" style={{ height: timelineHeight }}>
-        <div className="time-axis">{timelineTimes.map((time) => <span key={time} style={{ top: slotTop(time) }}>{time}</span>)}</div>
-        <TimelineColumn className="lunch-column" slots={lunchSlots} onSelect={setDetailReservationId} />
-        <TimelineColumn className="dinner-column" slots={dinnerSlots} onSelect={setDetailReservationId} />
+      <div className="schedule-grid" style={{ height: timeline.height }}>
+        <div className="timeline-background" aria-hidden="true">{timeline.rows.map((row) => <div key={`${row.kind}-${row.start}`} className={`timeline-row timeline-${row.kind}-row`} style={{ top: row.top, height: row.height }}>{row.label && <span>{row.label}</span>}</div>)}</div>
+        <div className="time-axis">{timeline.rows.filter((row) => row.kind === "service").map((row) => <span key={row.start} style={{ top: row.top }}>{formatMinutes(row.start)}</span>)}</div>
+        <TimelineColumn className="lunch-column" slots={lunchSlots} timeline={timeline} onSelect={setDetailReservationId} />
+        <TimelineColumn className="dinner-column" slots={dinnerSlots} timeline={timeline} onSelect={setDetailReservationId} />
         {selectedReservations.length === 0 && <div className="schedule-empty">Nessuna prenotazione per il giorno selezionato.</div>}
       </div>
     </Panel>
@@ -84,15 +118,11 @@ export default function CalendarPage() {
   </div>;
 }
 
-function slotTop(time: string) {
-  return ((minutesFromTime(time) - TIMELINE_START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT;
-}
-
-function TimelineColumn({ className, slots, onSelect }: { className: string; slots: ReturnType<typeof reservationsByTime>; onSelect: (id: string) => void }) {
+function TimelineColumn({ className, slots, timeline, onSelect }: { className: string; slots: ReturnType<typeof reservationsByTime>; timeline: TimelineLayout; onSelect: (id: string) => void }) {
   return <div className={`service-column ${className}`}>{slots.map(({ time, items }) => {
     const visible = items.slice(0, MAX_VISIBLE_PER_SLOT);
     const hidden = items.slice(MAX_VISIBLE_PER_SLOT);
-    return <div key={time} className="reservation-slot-group" style={{ top: slotTop(time) }}>
+    return <div key={time} className="reservation-slot-group" style={{ top: timeline.topForTime(time) }}>
       {visible.map((item) => <ReservationBlock key={item.id} item={item} compact={items.length > 1} />)}
       {hidden.length > 0 && <HiddenReservationsPopover time={time} items={hidden} onSelect={onSelect} />}
     </div>;
@@ -114,5 +144,5 @@ function HiddenReservationsPopover({ time, items, onSelect }: { time: string; it
 }
 
 function ReservationBlock({ item, compact }: { item: Reservation; compact: boolean }) {
-  return <button className={`reservation-block block-${item.status} ${compact ? "compact" : ""}`} title={`${item.time} · ${item.name} · ${item.guests} persone · ${item.table}`}><b>{item.time}</b><strong>{item.name}</strong><small>{item.guests} persone · {item.table}</small></button>;
+  return <button className={`reservation-block block-${item.status} ${compact ? "compact" : ""}`} title={`${item.time} · ${item.name} · ${item.guests} persone · ${item.table}`}><b>{item.time}</b><strong>{item.name}</strong><small>{item.guests} pers. · {item.table || "Da assegnare"}</small></button>;
 }

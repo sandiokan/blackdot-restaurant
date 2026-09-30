@@ -1,11 +1,14 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AppShell from "@/components/layout/AppShell";
 import NewReservationDialog from "@/components/NewReservationDialog";
 import { AppDataProvider } from "@/contexts/AppDataContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import AccessNotConfigured from "@/pages/AccessNotConfigured";
 import Overview from "@/pages/Overview";
 import Reservations from "@/pages/Reservations";
 import CalendarPage from "@/pages/CalendarPage";
@@ -14,6 +17,7 @@ import Staff from "@/pages/Staff";
 import Shifts from "@/pages/Shifts";
 import SettingsPage from "@/pages/SettingsPage";
 import Onboarding from "@/pages/Onboarding";
+import Login from "@/pages/Login";
 
 function DashboardRoutes() {
   return (
@@ -32,19 +36,40 @@ function DashboardRoutes() {
   );
 }
 
+function AuthenticatedApp({ restaurantId }: { restaurantId: string }) {
+  return <AppDataProvider restaurantId={restaurantId}>
+    <Switch>
+      <Route path="/onboarding" component={Onboarding} />
+      <Route><DashboardRoutes /></Route>
+    </Switch>
+    <NewReservationDialog />
+  </AppDataProvider>;
+}
+
+function AuthGate() {
+  const { loading, user, restaurantId, role, accessError } = useAuth();
+  const [location, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user && location !== "/login") navigate("/login", { replace: true });
+    if (!loading && user && location === "/login" && restaurantId && role) navigate("/", { replace: true });
+  }, [loading, user, restaurantId, role, location, navigate]);
+
+  if (loading) return <main className="auth-loading">Verifica accesso...</main>;
+  if (!user) return <Login />;
+  if (!restaurantId || !role || accessError) return <AccessNotConfigured />;
+  return <AuthenticatedApp restaurantId={restaurantId} />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          <AppDataProvider>
-            <Switch>
-              <Route path="/onboarding" component={Onboarding} />
-              <Route><DashboardRoutes /></Route>
-            </Switch>
-            <NewReservationDialog />
+          <AuthProvider>
+            <AuthGate />
             <Toaster theme="dark" position="top-center" richColors />
-          </AppDataProvider>
+          </AuthProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

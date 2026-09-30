@@ -2,10 +2,11 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Bell, CalendarDays, ChartNoAxesColumnIncreasing, ChefHat, ChevronDown,
-  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList, RefreshCw,
+  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList, RefreshCw, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { href: "/", label: "Overview", icon: Home },
@@ -21,8 +22,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileMenu, setMobileMenu] = useState(false);
   const { restaurant, loading, error, reloadData } = useAppData();
+  const { user, role, signOut } = useAuth();
   const active = (href: string) => href === "/" ? location === "/" : location.startsWith(href);
   const [restaurantLead, ...restaurantTail] = (restaurant?.name ?? "Ristorante").split(" ");
+  const userEmail = user?.email ?? "";
+  const userInitials = userEmail.split("@")[0].slice(0, 2).toUpperCase() || "BD";
+  const roleLabel = role === "OWNER" ? "Proprietario" : role === "MANAGER" ? "Gestore" : "Dipendente";
 
   return (
     <div className="app-shell">
@@ -45,7 +50,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <label className="global-search"><Search size={19} /><input aria-label="Ricerca globale" placeholder="Cerca prenotazioni, clienti, telefono..." /></label>
           <div className="topbar-actions">
             <button className="notification" aria-label="Notifiche"><Bell size={21} /><span /></button>
-            <div className="user-profile"><span className="user-avatar">LR</span><span><b>Ludovico Rossi</b><small>Proprietario</small></span><ChevronDown size={15} /></div>
+            <div className="user-profile"><span className="user-avatar">{userInitials}</span><span><b>{userEmail}</b><small>{roleLabel}</small></span></div>
+            <button className="logout-button" aria-label="Esci" onClick={() => void signOut()}><LogOut size={17} /><span>Esci</span></button>
           </div>
         </header>
         <main className="content">

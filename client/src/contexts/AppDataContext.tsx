@@ -176,7 +176,7 @@ function shiftIncludesDateTime(shift: Shift, date: string, time: string) {
   return (shift.date === date && time >= shift.startTime) || (addLocalDays(shift.date, 1) === date && time < shift.endTime);
 }
 
-export function AppDataProvider({ children }: { children: ReactNode }) {
+export function AppDataProvider({ children, restaurantId }: { children: ReactNode; restaurantId: string }) {
   const [currentDate, setCurrentDate] = useState(() => getLocalDateKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE));
   const [currentTime, setCurrentTime] = useState(() => getLocalTimeKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE));
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -201,8 +201,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data: restaurantRow, error: restaurantError } = await supabase
         .from("restaurants")
         .select("*")
-        .order("created_at", { ascending: true })
-        .limit(1)
+        .eq("id", restaurantId)
         .maybeSingle();
 
       if (restaurantError) throw restaurantError;
@@ -228,7 +227,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => {
     void reloadData();

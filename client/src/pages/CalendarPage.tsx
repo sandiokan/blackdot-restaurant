@@ -16,16 +16,18 @@ const SLOT_MINUTES = 30;
 const SERVICE_SLOT_HEIGHT = 46;
 const CLOSED_ROW_HEIGHT = 34;
 const MAX_VISIBLE_PER_SLOT = 2;
+const VISUAL_LUNCH_START_MINUTES = 11 * 60;
 
 function formatMinutes(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-function buildTimeline(lunchOpen: string, lunchClose: string, dinnerOpen: string, dinnerClose: string): TimelineLayout {
-  const services = [
-    { start: minutesFromTime(lunchOpen), end: minutesFromTime(lunchClose) },
-    { start: minutesFromTime(dinnerOpen), end: minutesFromTime(dinnerClose) },
-  ].filter((service) => service.end > service.start).sort((a, b) => a.start - b.start);
+function buildTimeline(lunchClose: string, dinnerOpen: string, dinnerClose: string, view: CalendarView): TimelineLayout {
+  const lunch = { start: VISUAL_LUNCH_START_MINUTES, end: minutesFromTime(lunchClose) };
+  const dinner = { start: minutesFromTime(dinnerOpen), end: minutesFromTime(dinnerClose) };
+  const services = (view === "Pranzo" ? [lunch] : view === "Cena" ? [dinner] : [lunch, dinner])
+    .filter((service) => service.end > service.start)
+    .sort((a, b) => a.start - b.start);
 
   const rows: TimelineRow[] = [];
   let offset = 0;
@@ -63,7 +65,7 @@ export default function CalendarPage() {
   const [detailReservationId, setDetailReservationId] = useState<string | null>(null);
   const knownReservationIds = useRef<Set<string> | null>(null);
   const weekDates = useMemo(() => getLocalWeek(selectedDate), [selectedDate]);
-  const timeline = useMemo(() => buildTimeline(restaurant?.lunchOpen ?? "12:00", restaurant?.lunchClose ?? "15:00", restaurant?.dinnerOpen ?? "19:00", restaurant?.dinnerClose ?? "23:00"), [restaurant?.lunchOpen, restaurant?.lunchClose, restaurant?.dinnerOpen, restaurant?.dinnerClose]);
+  const timeline = useMemo(() => buildTimeline(restaurant?.lunchClose ?? "15:00", restaurant?.dinnerOpen ?? "19:00", restaurant?.dinnerClose ?? "23:00", view), [restaurant?.lunchClose, restaurant?.dinnerOpen, restaurant?.dinnerClose, view]);
   const selectedReservations = useMemo(() => reservations
     .filter((item) => item.date === selectedDate)
     .filter((item) => view === "Pranzo e Cena" || item.service === view)
@@ -105,11 +107,11 @@ export default function CalendarPage() {
     <Panel className="day-schedule">
       <SectionTitle>{dayLabel} <select aria-label="Vista" value={view} onChange={(event) => setView(event.target.value as CalendarView)}><option>Pranzo e Cena</option><option>Pranzo</option><option>Cena</option></select></SectionTitle>
       <div className="service-summary"><ServiceProgress label={`PRANZO · ${restaurant?.lunchOpen ?? "--:--"} – ${restaurant?.lunchClose ?? "--:--"}`} used={lunch} total={lunchCapacity} /><ServiceProgress label={`CENA · ${restaurant?.dinnerOpen ?? "--:--"} – ${restaurant?.dinnerClose ?? "--:--"}`} used={dinner} total={dinnerCapacity} /></div>
-      <div className="schedule-grid" style={{ height: timeline.height }}>
+      <div className={`schedule-grid ${view === "Pranzo e Cena" ? "schedule-combined" : "schedule-single-service"}`} style={{ height: timeline.height, gridTemplateColumns: view === "Pranzo e Cena" ? undefined : "72px minmax(0, 1fr)" }}>
         <div className="timeline-background" aria-hidden="true">{timeline.rows.map((row) => <div key={`${row.kind}-${row.start}`} className={`timeline-row timeline-${row.kind}-row`} style={{ top: row.top, height: row.height }}>{row.label && <span>{row.label}</span>}</div>)}</div>
-        <div className="time-axis">{timeline.rows.filter((row) => row.kind === "service").map((row) => <span key={row.start} style={{ top: row.top }}>{formatMinutes(row.start)}</span>)}</div>
-        <TimelineColumn className="lunch-column" slots={lunchSlots} timeline={timeline} onSelect={setDetailReservationId} />
-        <TimelineColumn className="dinner-column" slots={dinnerSlots} timeline={timeline} onSelect={setDetailReservationId} />
+        <div className="time-axis">{timeline.rows.filter((row) => row.kind === "service").map((row, index) => <span key={row.start} className={index === 0 ? "first-time" : undefined} style={{ top: row.top }}>{formatMinutes(row.start)}</span>)}</div>
+        {view !== "Cena" && <TimelineColumn className="lunch-column" slots={lunchSlots} timeline={timeline} onSelect={setDetailReservationId} />}
+        {view !== "Pranzo" && <TimelineColumn className="dinner-column" slots={dinnerSlots} timeline={timeline} onSelect={setDetailReservationId} />}
         {selectedReservations.length === 0 && <div className="schedule-empty">Nessuna prenotazione per il giorno selezionato.</div>}
       </div>
     </Panel>

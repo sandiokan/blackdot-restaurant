@@ -170,7 +170,13 @@ Deno.serve(async (request) => {
         authenticated_user_id: identity.user.id,
         authenticated_email: identity.user.email,
       });
-      if (acceptError) return error("Invitation cannot be accepted.", 403, corsOrigin);
+      if (acceptError) {
+        console.error("Unable to accept invitation", {
+          code: acceptError.code,
+          message: acceptError.message,
+        });
+        return error("Invitation cannot be accepted.", 403, corsOrigin);
+      }
       return json({ access: data?.[0] ?? null }, 200, corsOrigin);
     }
 

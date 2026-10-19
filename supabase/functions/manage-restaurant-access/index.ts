@@ -234,7 +234,10 @@ Deno.serve(async (request) => {
           throw new Error("Unable to send access email.");
         }
       } else {
-        const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: redirect });
+        const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+          redirectTo: redirect,
+          data: { requires_password_setup: true },
+        });
         if (inviteError) {
           await rollbackPendingInvitation(invitation.id);
           throw new Error("Unable to send invitation email.");

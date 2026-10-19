@@ -19,6 +19,7 @@ type AuthContextValue = {
   accessError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshAccess: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -97,6 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await resolveSession(null);
   }, [resolveSession]);
 
+  const refreshAccess = useCallback(async () => {
+    await resolveSession(session);
+  }, [resolveSession, session]);
+
   const value = useMemo(() => ({
     loading,
     user: session?.user ?? null,
@@ -107,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessError,
     signIn,
     signOut,
-  }), [loading, session, access, accessError, signIn, signOut]);
+    refreshAccess,
+  }), [loading, session, access, accessError, signIn, signOut, refreshAccess]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

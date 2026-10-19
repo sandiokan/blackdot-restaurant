@@ -67,3 +67,26 @@ export interface Shift {
 }
 
 export type ShiftInput = Omit<Shift, "id">;
+
+export type RestaurantAccessRole = "OWNER" | "MANAGER" | "EMPLOYEE";
+
+export interface RestaurantAccessRecord {
+  id: string;
+  userId: string;
+  email: string | null;
+  role: RestaurantAccessRole;
+  createdAt: string;
+}
+
+export interface RestaurantAccessInvite {
+  id: string;
+  email: string;
+  role: Exclude<RestaurantAccessRole, "OWNER">;
+  status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+  createdAt: string;
+  sentAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  invitedUserId: string | null;
+}

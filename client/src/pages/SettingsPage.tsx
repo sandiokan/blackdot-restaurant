@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, Building2, CalendarDays, Globe2, Link2, Save, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, Panel, PrimaryButton, Segmented } from "@/components/shared/Primitives";
+import AccessManagementPanel from "@/components/AccessManagementPanel";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RestaurantUpdate } from "@/types/models";
@@ -74,7 +75,7 @@ export default function SettingsPage() {
       <Panel><h2>Orari di servizio</h2><ServiceSetting label="Pranzo" active={lunch} onChange={setLunch} start={form.lunchOpen} end={form.lunchClose} capacity={form.lunchCapacity} disabled={!canManageOperations} onStartChange={(value) => updateField("lunchOpen", value)} onEndChange={(value) => updateField("lunchClose", value)} onCapacityChange={(value) => updateField("lunchCapacity", value)} /><ServiceSetting label="Cena" active={dinner} onChange={setDinner} start={form.dinnerOpen} end={form.dinnerClose} capacity={form.dinnerCapacity} disabled={!canManageOperations} onStartChange={(value) => updateField("dinnerOpen", value)} onEndChange={(value) => updateField("dinnerClose", value)} onCapacityChange={(value) => updateField("dinnerCapacity", value)} /></Panel>
       <Panel><h2>Altre impostazioni</h2><label className="field"><span>Fuso orario</span><select disabled={!canManageOperations}><option>Europe/Rome</option></select></label><label className="field"><span>Lingua</span><select value={language} onChange={(event) => setLanguage(event.target.value)} disabled={!canManageOperations}><option>Italiano</option><option>English</option></select></label><label className="field"><span>Valuta</span><select disabled={!canManageOperations}><option>Euro (€)</option></select></label></Panel>
       <PrimaryButton className="settings-save" onClick={() => void handleSave()} disabled={loading || saving || !canManageOperations}><Save size={17} />{saving ? "Salvataggio..." : "Salva modifiche"}</PrimaryButton>
-    </div> : <Panel className="settings-placeholder"><Globe2 size={28} /><h2>{currentSection}</h2><p>I controlli essenziali di questa sezione sono disponibili nel prototipo V1.</p>{canManageOperations && <Segmented options={["Attivo", "Disattivo"]} value="Attivo" onChange={() => toast.success(`${currentSection}: preferenza aggiornata`)} />}</Panel>}
+    </div> : currentSection === "Utenti" && role === "OWNER" ? <AccessManagementPanel /> : <Panel className="settings-placeholder"><Globe2 size={28} /><h2>{currentSection}</h2><p>I controlli essenziali di questa sezione sono disponibili nel prototipo V1.</p>{canManageOperations && <Segmented options={["Attivo", "Disattivo"]} value="Attivo" onChange={() => toast.success(`${currentSection}: preferenza aggiornata`)} />}</Panel>}
   </div>;
 }
 

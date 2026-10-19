@@ -18,6 +18,7 @@ import Shifts from "@/pages/Shifts";
 import SettingsPage from "@/pages/SettingsPage";
 import Onboarding from "@/pages/Onboarding";
 import Login from "@/pages/Login";
+import AcceptInvitation from "@/pages/AcceptInvitation";
 
 function DashboardRoutes() {
   return (
@@ -67,7 +68,10 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <AuthProvider>
-            <AuthGate />
+            <Switch>
+              <Route path="/accept-invitation" component={AcceptInvitation} />
+              <Route><AuthGate /></Route>
+            </Switch>
             <Toaster theme="dark" position="top-center" richColors />
           </AuthProvider>
         </TooltipProvider>

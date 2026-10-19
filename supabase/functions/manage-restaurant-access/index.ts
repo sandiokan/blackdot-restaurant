@@ -16,6 +16,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 const inviteRedirectUrl = Deno.env.get("ACCESS_INVITE_REDIRECT_URL");
+const manusPreviewOrigin = "https://3000-it55nuaf6s1eewwlc0v3d-f857564e.us1.manus.computer";
 const MAX_INVITES_PER_HOUR = 10;
 
 if (!supabaseUrl || !serviceRoleKey || !anonKey) {
@@ -58,13 +59,14 @@ function validRole(value: unknown): value is AccessRole {
 }
 
 function allowedOrigin(requestOrigin: string | null) {
-  if (!inviteRedirectUrl) return null;
+  if (!requestOrigin) return null;
+  const allowedOrigins = [manusPreviewOrigin];
   try {
-    const configuredOrigin = new URL(inviteRedirectUrl).origin;
-    return requestOrigin === configuredOrigin ? configuredOrigin : null;
+    if (inviteRedirectUrl) allowedOrigins.push(new URL(inviteRedirectUrl).origin);
   } catch {
-    return null;
+    // Keep the exact Manus preview origin available if the invite redirect is misconfigured.
   }
+  return allowedOrigins.includes(requestOrigin) ? requestOrigin : null;
 }
 
 function redirectUrlFor(invitationId: string) {

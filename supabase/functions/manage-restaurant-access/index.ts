@@ -216,6 +216,10 @@ Deno.serve(async (request) => {
         .select("id")
         .single();
       if (invitationError || !invitation) {
+        console.error("Unable to create invitation", {
+          code: invitationError?.code,
+          message: invitationError?.message,
+        });
         if (invitationError?.code === "23505") return error("An active invitation already exists for this email.", 409, corsOrigin);
         throw new Error("Unable to create invitation.");
       }

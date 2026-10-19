@@ -3,6 +3,7 @@ import { CalendarDays, Download, Globe2, MessageCircle, MoreHorizontal, Phone, P
 import { toast } from "sonner";
 import ReservationDetail from "@/components/ReservationDetail";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { addLocalDays, formatLocalDate, getLocalDateRange, getLocalWeek } from "@/lib/localDate";
 import { countCovers, isActiveReservation } from "@/lib/reservationMetrics";
 import type { Reservation } from "@/types/models";
@@ -13,6 +14,7 @@ type ReservationRange = "Oggi" | "Domani" | "Questa settimana" | "Personalizza";
 
 export default function Reservations() {
   const { currentDate, restaurant, reservations, setModalOpen, updateReservationStatus } = useAppData();
+  const { canManageOperations } = useAuth();
   const [range, setRange] = useState<ReservationRange>("Oggi");
   const [customStart, setCustomStart] = useState(currentDate);
   const [customEnd, setCustomEnd] = useState(currentDate);
@@ -80,7 +82,7 @@ export default function Reservations() {
   return (
     <div className="page reservations-page">
       <div className="reservations-main">
-        <PageHeader title="Prenotazioni" description="Gestisci tutte le prenotazioni del tuo ristorante." action={<PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton>} />
+        <PageHeader title="Prenotazioni" description="Gestisci tutte le prenotazioni del tuo ristorante." action={canManageOperations ? <PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton> : undefined} />
         <div className="reservations-toolbar"><Segmented options={["Oggi", "Domani", "Questa settimana", "Personalizza"] as ReservationRange[]} value={range} onChange={changeRange} /><div className="date-nav"><button onClick={() => navigateDay(-1)} aria-label="Giorno precedente">‹</button><b>{dateLabel}</b><button onClick={() => navigateDay(1)} aria-label="Giorno successivo">›</button></div></div>
         {range === "Personalizza" && <div className="reservation-custom-range"><label>Dal <input type="date" value={customStart} onChange={(event) => changeCustomStart(event.target.value)} /></label><label>Al <input type="date" value={customEnd} onChange={(event) => changeCustomEnd(event.target.value)} /></label></div>}
         <div className="stats-grid four compact-stats">

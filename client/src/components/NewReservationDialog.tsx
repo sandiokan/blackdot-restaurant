@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { CalendarDays, Check, Minus, Plus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { addLocalDays } from "@/lib/localDate";
 import type { ReservationSource, ServiceType } from "@/types/models";
 import { PrimaryButton, Segmented } from "@/components/shared/Primitives";
@@ -13,6 +14,7 @@ const times: Record<ServiceType, string[]> = {
 
 export default function NewReservationDialog() {
   const { currentDate, modalOpen, setModalOpen, addReservation, reservations, restaurant, saving } = useAppData();
+  const { canManageOperations } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [day, setDay] = useState("Oggi");
@@ -32,7 +34,7 @@ export default function NewReservationDialog() {
     return Math.max(0, capacity - occupied);
   }, [reservations, selectedDate, service, capacity]);
 
-  if (!modalOpen) return null;
+  if (!modalOpen || !canManageOperations) return null;
 
   function close() {
     if (!saving) setModalOpen(false);

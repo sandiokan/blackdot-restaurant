@@ -15,6 +15,7 @@ type AuthContextValue = {
   session: Session | null;
   restaurantId: string | null;
   role: RestaurantUserRole | null;
+  canManageOperations: boolean;
   accessError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     restaurantId: access?.restaurantId ?? null,
     role: access?.role ?? null,
+    canManageOperations: access?.role === "OWNER" || access?.role === "MANAGER",
     accessError,
     signIn,
     signOut,

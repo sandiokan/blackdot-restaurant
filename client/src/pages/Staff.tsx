@@ -3,6 +3,7 @@ import { MoreVertical, Plus, UserCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, PageHeader, Panel, PrimaryButton, SectionTitle, Segmented } from "@/components/shared/Primitives";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Shift, StaffArea, StaffInput, StaffMember, StaffStatus } from "@/types/models";
 
 const filters = ["Tutti", "Sala", "Cucina", "Bar", "Amministrazione"] as const;
@@ -26,6 +27,7 @@ function italianDate(dateString: string) {
 
 export default function Staff() {
   const { currentDate, staff, shifts, staffOnDuty, staffOnDutyByArea, saving, addStaff, updateStaff } = useAppData();
+  const { canManageOperations } = useAuth();
   const [filter, setFilter] = useState<StaffArea | "Tutti">("Tutti");
   const [editing, setEditing] = useState<StaffMember | null | undefined>(undefined);
   const visible = staff.filter((item) => filter === "Tutti" || item.area === filter);
@@ -36,14 +38,14 @@ export default function Staff() {
     .slice(0, 5), [shifts, currentDate]);
 
   return <div className="page staff-page">
-    <PageHeader title="Personale" description="Gestisci il tuo team e i relativi ruoli." action={<PrimaryButton onClick={() => setEditing(null)}><Plus size={18} />Aggiungi membro</PrimaryButton>} />
+    <PageHeader title="Personale" description="Gestisci il tuo team e i relativi ruoli." action={canManageOperations ? <PrimaryButton onClick={() => setEditing(null)}><Plus size={18} />Aggiungi membro</PrimaryButton> : undefined} />
     <Segmented options={[...filters]} value={filter} onChange={setFilter} />
     <div className="staff-layout">
       <div className="staff-content"><div className="staff-grid">{visible.map((person) => {
         const todayShift = todayShifts.get(person.id);
         const isOnDuty = staffOnDuty.some((item) => item.id === person.id);
         const hasScheduledShift = todayShift?.status === "scheduled";
-        return <Panel key={person.id} className="staff-card" interactive><button className="staff-more" onClick={() => setEditing(person)} aria-label={`Modifica ${person.name}`}><MoreVertical size={18} /></button><Avatar initials={person.initials} color={person.accent} size="lg" /><div className="staff-identity"><h3>{person.name}</h3><p>{person.role}</p></div><div className={`staff-status staff-${isOnDuty ? "working" : hasScheduledShift ? "upcoming" : "absent"}`}><i />{isOnDuty ? "In servizio" : hasScheduledShift ? "Turno assegnato" : "Non in servizio"}</div><strong>{shiftLabel(todayShift)}</strong></Panel>;
+        return <Panel key={person.id} className="staff-card" interactive={canManageOperations}>{canManageOperations && <button className="staff-more" onClick={() => setEditing(person)} aria-label={`Modifica ${person.name}`}><MoreVertical size={18} /></button>}<Avatar initials={person.initials} color={person.accent} size="lg" /><div className="staff-identity"><h3>{person.name}</h3><p>{person.role}</p></div><div className={`staff-status staff-${isOnDuty ? "working" : hasScheduledShift ? "upcoming" : "absent"}`}><i />{isOnDuty ? "In servizio" : hasScheduledShift ? "Turno assegnato" : "Non in servizio"}</div><strong>{shiftLabel(todayShift)}</strong></Panel>;
       })}</div>
         <Panel className="shift-summary"><SectionTitle>Riepilogo turno di oggi</SectionTitle><div><span><UserCheck />Persone in servizio<b>{staffOnDuty.length}</b></span><span>Sala<b>{staffOnDutyByArea.Sala}</b></span><span>Cucina<b>{staffOnDutyByArea.Cucina}</b></span><span>Bar<b>{staffOnDutyByArea.Bar}</b></span></div></Panel>
       </div>

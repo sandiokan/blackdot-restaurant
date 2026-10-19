@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, PageHeader, Panel, PrimaryButton, Segmented } from "@/components/shared/Primitives";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { addLocalDays, addLocalMonths, formatLocalDate, getLocalMonth, getLocalWeek } from "@/lib/localDate";
 import type { Shift, ShiftInput, ShiftStatus, StaffArea } from "@/types/models";
 
@@ -38,6 +39,7 @@ function periodLabel(view: ShiftView, dates: string[]) {
 
 export default function Shifts() {
   const { currentDate, staff, shifts, saving, addShift, updateShift } = useAppData();
+  const { canManageOperations } = useAuth();
   const [view, setView] = useState<ShiftView>("Settimana");
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [editor, setEditor] = useState<ShiftEditor | null>(null);
@@ -60,9 +62,9 @@ export default function Shifts() {
   }
 
   return <div className="page shifts-page">
-    <PageHeader title="Turni" description="Organizza i turni di lavoro del tuo staff." action={<PrimaryButton onClick={() => staff[0] ? setEditor({ shift: null, staffId: staff[0].id, date: dates[0] }) : toast.error("Aggiungi prima un membro del personale")}><Plus size={18} />Nuovo turno</PrimaryButton>} />
+    <PageHeader title="Turni" description="Organizza i turni di lavoro del tuo staff." action={canManageOperations ? <PrimaryButton onClick={() => staff[0] ? setEditor({ shift: null, staffId: staff[0].id, date: dates[0] }) : toast.error("Aggiungi prima un membro del personale")}><Plus size={18} />Nuovo turno</PrimaryButton> : undefined} />
     <div className="shift-toolbar"><div className="date-nav"><button onClick={() => navigatePeriod(-1)} aria-label="Periodo precedente"><ChevronLeft /></button><b>{periodLabel(view, dates)}</b><button onClick={() => navigatePeriod(1)} aria-label="Periodo successivo"><ChevronRight /></button></div><Segmented options={["Oggi", "Settimana", "Mese"] as ShiftView[]} value={view} onChange={changeView} /></div>
-    <Panel className="schedule-table-panel"><div className="shift-table" style={tableStyle}><div className="shift-grid header" style={gridStyle}><div />{dates.map((date) => <div key={date}>{dayParts(date).map((part) => <span key={part}>{part}</span>)}</div>)}</div>{staff.map((person) => <div className="shift-grid row" style={gridStyle} key={person.id}><div className="shift-person"><Avatar initials={person.initials} color={person.accent} size="sm" /><b>{person.name}</b></div>{dates.map((date) => { const shift = shiftsByStaffAndDate.get(`${person.id}:${date}`); return <button key={`${person.id}-${date}`} className={`shift-cell shift-${shiftClass(shift)}`} onClick={() => setEditor({ shift: shift ?? null, staffId: person.id, date })}>{shiftLabel(shift)}</button>; })}</div>)}</div></Panel>
+    <Panel className="schedule-table-panel"><div className="shift-table" style={tableStyle}><div className="shift-grid header" style={gridStyle}><div />{dates.map((date) => <div key={date}>{dayParts(date).map((part) => <span key={part}>{part}</span>)}</div>)}</div>{staff.map((person) => <div className="shift-grid row" style={gridStyle} key={person.id}><div className="shift-person"><Avatar initials={person.initials} color={person.accent} size="sm" /><b>{person.name}</b></div>{dates.map((date) => { const shift = shiftsByStaffAndDate.get(`${person.id}:${date}`); return <button key={`${person.id}-${date}`} className={`shift-cell shift-${shiftClass(shift)}`} disabled={!canManageOperations} onClick={() => setEditor({ shift: shift ?? null, staffId: person.id, date })}>{shiftLabel(shift)}</button>; })}</div>)}</div></Panel>
     <div className="shift-legend"><span><i className="sala" />Turno sala</span><span><i className="cucina" />Turno cucina</span><span><i className="bar" />Turno bar</span><span><i className="riposo" />Riposo</span></div>
     {editor && <ShiftDialog editor={editor} saving={saving} staff={staff} onClose={() => setEditor(null)} onSave={async (input) => {
       try {

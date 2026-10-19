@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import ReservationDetail from "@/components/ReservationDetail";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatusBadge } from "@/components/shared/Primitives";
 import { addLocalMonths, formatLocalDate, getLocalWeek } from "@/lib/localDate";
 import { countCovers, minutesFromTime, occupancyTone, reservationsByTime, reservationsForDate } from "@/lib/reservationMetrics";
@@ -60,6 +61,7 @@ function buildTimeline(lunchClose: string, dinnerOpen: string, dinnerClose: stri
 
 export default function CalendarPage() {
   const { currentDate, restaurant, reservations, loading, setModalOpen, updateReservationStatus } = useAppData();
+  const { canManageOperations } = useAuth();
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [view, setView] = useState<CalendarView>("Pranzo e Cena");
   const [detailReservationId, setDetailReservationId] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export default function CalendarPage() {
   }
 
   return <div className="page calendar-page">
-    <PageHeader title="Calendario" description="Visualizza e gestisci le prenotazioni, giorno per giorno." action={<PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton>} />
+    <PageHeader title="Calendario" description="Visualizza e gestisci le prenotazioni, giorno per giorno." action={canManageOperations ? <PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton> : undefined} />
     <div className="calendar-controls"><button onClick={() => setSelectedDate(currentDate)}>Oggi</button><button onClick={() => setSelectedDate((date) => addLocalMonths(date, -1))}><ChevronLeft /></button><b>{monthLabel}</b><button onClick={() => setSelectedDate((date) => addLocalMonths(date, 1))}><ChevronRight /></button></div>
     <div className="week-strip">{weekDates.map((date) => <button key={date} onClick={() => setSelectedDate(date)} className={selectedDate === date ? "active" : ""}><small>{formatLocalDate(date, { weekday: "short" }).slice(0, 3)}</small><b>{formatLocalDate(date, { day: "numeric" })}</b><span><i className={serviceTone(date, "Pranzo", lunchCapacity)} /><i className={serviceTone(date, "Cena", dinnerCapacity)} /></span></button>)}</div>
     <Panel className="day-schedule">

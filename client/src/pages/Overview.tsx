@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { AlertCircle, CalendarDays, CheckCircle2, Clock3, Plus, Sparkles, Table2, Users } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_RESTAURANT_TIME_ZONE, formatLocalDate, getLocalTimeKey } from "@/lib/localDate";
 import { coversByTime, occupancyTone } from "@/lib/reservationMetrics";
 import { EmptyState, PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProgress, StatCard, StatusBadge } from "@/components/shared/Primitives";
@@ -8,6 +9,7 @@ import { EmptyState, PageHeader, Panel, PrimaryButton, SectionTitle, ServiceProg
 export default function Overview() {
   const [, navigate] = useLocation();
   const { currentDate, restaurant, reservations, activeReservations, lunchCovers, dinnerCovers, totalCovers, staffOnDuty, staffOnDutyByArea, setModalOpen } = useAppData();
+  const { canManageOperations } = useAuth();
   const todayReservations = reservations.filter((item) => item.date === currentDate);
   const pending = activeReservations.filter((item) => item.status === "pending").length;
   const currentTime = getLocalTimeKey(new Date(), DEFAULT_RESTAURANT_TIME_ZONE);
@@ -26,7 +28,7 @@ export default function Overview() {
         eyebrow={fullDate}
         title="Buongiorno, Ludovico"
         description={`Ecco la situazione di oggi, ${fullDate}.`}
-        action={<PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton>}
+        action={canManageOperations ? <PrimaryButton onClick={() => setModalOpen(true)}><Plus size={18} />Nuova prenotazione</PrimaryButton> : undefined}
       />
 
       <div className="weather-mobile panel"><span>☀</span><b>23°</b><small>Brescia · Cielo sereno</small></div>

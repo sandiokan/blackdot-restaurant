@@ -1,7 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { RestaurantBranding, RestaurantThemeMode } from "@/types/models";
+import type { RestaurantBranding, RestaurantBrandingDraft, RestaurantThemeMode } from "@/types/models";
+
+const BRAND_ASSET_BUCKET = "restaurant-brand-assets";
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 const DEFAULT_BRANDING: RestaurantBranding = {
   restaurantId: null,
@@ -26,7 +30,12 @@ type DatabaseBranding = {
 
 type RestaurantThemeContextValue = {
   branding: RestaurantBranding;
+  savedBranding: RestaurantBranding;
   loading: boolean;
+  previewBranding: (draft: RestaurantBrandingDraft) => void;
+  restoreBranding: () => void;
+  saveBranding: (draft: RestaurantBrandingDraft, logoFile: File | null) => Promise<void>;
+  resetBranding: () => Promise<void>;
 };
 
 const RestaurantThemeContext = createContext<RestaurantThemeContextValue | undefined>(undefined);
@@ -58,7 +67,7 @@ function applyTheme(branding: RestaurantBranding) {
 
 async function getLogoUrl(path: string | null) {
   if (!path || !supabase) return null;
-  const { data, error } = await supabase.storage.from("restaurant-brand-assets").createSignedUrl(path, 60 * 60);
+  const { data, error } = await supabase.storage.from(BRAND_ASSET_BUCKET).createSignedUrl(path, 60 * 60);
   return error ? null : data.signedUrl;
 }
 
@@ -75,15 +84,98 @@ function mapBranding(row: DatabaseBranding | null, logoUrl: string | null): Rest
   };
 }
 
+function fromDraft(draft: RestaurantBrandingDraft, restaurantId: string): RestaurantBranding {
+  return {
+    restaurantId,
+    displayName: draft.displayName.trim() || null,
+    logoPath: draft.logoPath,
+    logoUrl: draft.logoUrl,
+    themeMode: draft.themeMode,
+    primaryColor: normalizeHex(draft.primaryColor, DEFAULT_BRANDING.primaryColor),
+    secondaryColor: normalizeHex(draft.secondaryColor, DEFAULT_BRANDING.secondaryColor),
+  };
+}
+
+function assertLogoFile(file: File) {
+  if (!LOGO_MIME_TYPES.includes(file.type)) throw new Error("Il logo deve essere in formato PNG, JPEG o WebP.");
+  if (file.size > MAX_LOGO_BYTES) throw new Error("Il logo supera la dimensione massima di 2 MB.");
+}
+
+function logoPathFor(restaurantId: string, mimeType: string) {
+  const extension = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+  return `${restaurantId}/logo.${extension}`;
+}
+
 export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
-  const { restaurantId, user } = useAuth();
+  const { restaurantId, role, user } = useAuth();
   const [branding, setBranding] = useState<RestaurantBranding>(DEFAULT_BRANDING);
+  const [savedBranding, setSavedBranding] = useState<RestaurantBranding>(DEFAULT_BRANDING);
   const [loading, setLoading] = useState(false);
+
+  const restoreBranding = useCallback(() => setBranding(savedBranding), [savedBranding]);
+
+  const previewBranding = useCallback((draft: RestaurantBrandingDraft) => {
+    if (!restaurantId) return;
+    setBranding(fromDraft(draft, restaurantId));
+  }, [restaurantId]);
+
+  const saveBranding = useCallback(async (draft: RestaurantBrandingDraft, logoFile: File | null) => {
+    if (!supabase || !restaurantId || role !== "OWNER") throw new Error("Solo il proprietario può modificare l’identità grafica.");
+
+    let nextLogoPath = draft.logoPath;
+    let uploadedPath: string | null = null;
+    if (logoFile) {
+      assertLogoFile(logoFile);
+      uploadedPath = logoPathFor(restaurantId, logoFile.type);
+      const { error: uploadError } = await supabase.storage.from(BRAND_ASSET_BUCKET).upload(uploadedPath, logoFile, { upsert: true, contentType: logoFile.type });
+      if (uploadError) throw uploadError;
+      nextLogoPath = uploadedPath;
+    }
+
+    const { data, error } = await supabase
+      .from("restaurant_branding")
+      .upsert({
+        restaurant_id: restaurantId,
+        display_name: draft.displayName.trim() || null,
+        logo_path: nextLogoPath,
+        theme_mode: draft.themeMode,
+        primary_color: normalizeHex(draft.primaryColor, DEFAULT_BRANDING.primaryColor),
+        secondary_color: normalizeHex(draft.secondaryColor, DEFAULT_BRANDING.secondaryColor),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "restaurant_id" })
+      .select("restaurant_id, display_name, logo_path, theme_mode, primary_color, secondary_color")
+      .single();
+
+    if (error) {
+      if (uploadedPath && uploadedPath !== savedBranding.logoPath) await supabase.storage.from(BRAND_ASSET_BUCKET).remove([uploadedPath]);
+      throw error;
+    }
+
+    if (savedBranding.logoPath && savedBranding.logoPath !== nextLogoPath) {
+      await supabase.storage.from(BRAND_ASSET_BUCKET).remove([savedBranding.logoPath]);
+    }
+
+    const logoUrl = await getLogoUrl(nextLogoPath);
+    const nextBranding = mapBranding(data as DatabaseBranding, logoUrl);
+    setSavedBranding(nextBranding);
+    setBranding(nextBranding);
+  }, [restaurantId, role, savedBranding.logoPath]);
+
+  const resetBranding = useCallback(async () => {
+    if (!supabase || !restaurantId || role !== "OWNER") throw new Error("Solo il proprietario può modificare l’identità grafica.");
+    const previousLogoPath = savedBranding.logoPath;
+    const { error } = await supabase.from("restaurant_branding").delete().eq("restaurant_id", restaurantId);
+    if (error) throw error;
+    if (previousLogoPath) await supabase.storage.from(BRAND_ASSET_BUCKET).remove([previousLogoPath]);
+    setSavedBranding(DEFAULT_BRANDING);
+    setBranding(DEFAULT_BRANDING);
+  }, [restaurantId, role, savedBranding.logoPath]);
 
   useEffect(() => {
     let active = true;
     clearTheme();
     setBranding(DEFAULT_BRANDING);
+    setSavedBranding(DEFAULT_BRANDING);
 
     if (!restaurantId || !user || !supabase || !isSupabaseConfigured) {
       setLoading(false);
@@ -108,9 +200,10 @@ export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
       }
 
       const row = data as DatabaseBranding | null;
-      const logoUrl = await getLogoUrl(row?.logo_path ?? null);
+      const nextBranding = mapBranding(row, await getLogoUrl(row?.logo_path ?? null));
       if (!active) return;
-      setBranding(mapBranding(row, logoUrl));
+      setSavedBranding(nextBranding);
+      setBranding(nextBranding);
       setLoading(false);
     })();
 
@@ -124,7 +217,7 @@ export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(branding);
   }, [branding]);
 
-  const value = useMemo(() => ({ branding, loading }), [branding, loading]);
+  const value = useMemo(() => ({ branding, savedBranding, loading, previewBranding, restoreBranding, saveBranding, resetBranding }), [branding, savedBranding, loading, previewBranding, restoreBranding, saveBranding, resetBranding]);
   return <RestaurantThemeContext.Provider value={value}>{children}</RestaurantThemeContext.Provider>;
 }
 

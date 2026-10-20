@@ -32,6 +32,15 @@ export interface RestaurantBranding {
   secondaryColor: string;
 }
 
+export interface RestaurantBrandingDraft {
+  displayName: string;
+  logoPath: string | null;
+  logoUrl: string | null;
+  themeMode: RestaurantThemeMode;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface Reservation {
   id: string;
   date: string;

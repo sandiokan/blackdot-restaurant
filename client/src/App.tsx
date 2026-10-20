@@ -74,15 +74,17 @@ function AuthGate() {
 }
 
 function StudioGate() {
-  const { loading, user, isStudioAdmin } = useAuth();
-  const [, navigate] = useLocation();
+  const { loading, user, isStudioAdmin, passwordRecoveryActive, passwordRecoveryError } = useAuth();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
+    if (!loading && (passwordRecoveryActive || passwordRecoveryError) && location !== "/reset-password") navigate("/reset-password", { replace: true });
     if (!loading && !user) navigate("/login", { replace: true });
     if (!loading && user && !isStudioAdmin) navigate("/", { replace: true });
-  }, [loading, user, isStudioAdmin, navigate]);
+  }, [loading, user, isStudioAdmin, passwordRecoveryActive, passwordRecoveryError, location, navigate]);
 
   if (loading) return <main className="auth-loading">Verifica accesso Studio...</main>;
+  if (passwordRecoveryActive || passwordRecoveryError) return <main className="auth-loading">Apertura recupero password...</main>;
   if (!user) return <Login />;
   if (!isStudioAdmin) return <main className="auth-loading">Accesso riservato...</main>;
   return <StudioBranding />;

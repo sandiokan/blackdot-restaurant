@@ -21,6 +21,7 @@ import Onboarding from "@/pages/Onboarding";
 import Login from "@/pages/Login";
 import AcceptInvitation from "@/pages/AcceptInvitation";
 import FileArchive from "@/pages/FileArchive";
+import StudioBranding from "@/pages/StudioBranding";
 
 function DashboardRoutes() {
   return (
@@ -53,18 +54,35 @@ function AuthenticatedApp({ restaurantId }: { restaurantId: string }) {
 }
 
 function AuthGate() {
-  const { loading, user, restaurantId, role, accessError } = useAuth();
+  const { loading, user, restaurantId, role, isStudioAdmin, accessError } = useAuth();
   const [location, navigate] = useLocation();
 
   useEffect(() => {
     if (!loading && !user && location !== "/login") navigate("/login", { replace: true });
     if (!loading && user && location === "/login" && restaurantId && role) navigate("/", { replace: true });
-  }, [loading, user, restaurantId, role, location, navigate]);
+    if (!loading && user && isStudioAdmin && !restaurantId) navigate("/studio/branding", { replace: true });
+  }, [loading, user, restaurantId, role, isStudioAdmin, location, navigate]);
 
   if (loading) return <main className="auth-loading">Verifica accesso...</main>;
   if (!user) return <Login />;
+  if (isStudioAdmin && !restaurantId) return <main className="auth-loading">Apertura area Studio...</main>;
   if (!restaurantId || !role || accessError) return <AccessNotConfigured />;
   return <AuthenticatedApp restaurantId={restaurantId} />;
+}
+
+function StudioGate() {
+  const { loading, user, isStudioAdmin } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login", { replace: true });
+    if (!loading && user && !isStudioAdmin) navigate("/", { replace: true });
+  }, [loading, user, isStudioAdmin, navigate]);
+
+  if (loading) return <main className="auth-loading">Verifica accesso Studio...</main>;
+  if (!user) return <Login />;
+  if (!isStudioAdmin) return <main className="auth-loading">Accesso riservato...</main>;
+  return <StudioBranding />;
 }
 
 function App() {
@@ -75,6 +93,7 @@ function App() {
           <AuthProvider>
             <Switch>
               <Route path="/accept-invitation" component={AcceptInvitation} />
+              <Route path="/studio/branding" component={StudioGate} />
               <Route><AuthGate /></Route>
             </Switch>
             <Toaster theme="dark" position="top-center" richColors />

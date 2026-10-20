@@ -3,10 +3,15 @@ import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export type RestaurantUserRole = "OWNER" | "MANAGER" | "EMPLOYEE";
+export type StudioUserRole = "STUDIO_ADMIN";
 
 type RestaurantAccess = {
   restaurantId: string;
   role: RestaurantUserRole;
+};
+
+type StudioAccess = {
+  role: StudioUserRole;
 };
 
 type AuthContextValue = {
@@ -15,6 +20,8 @@ type AuthContextValue = {
   session: Session | null;
   restaurantId: string | null;
   role: RestaurantUserRole | null;
+  studioRole: StudioUserRole | null;
+  isStudioAdmin: boolean;
   canManageOperations: boolean;
   accessError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
@@ -32,11 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [access, setAccess] = useState<RestaurantAccess | null>(null);
+  const [studioAccess, setStudioAccess] = useState<StudioAccess | null>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
 
   const resolveSession = useCallback(async (nextSession: Session | null) => {
     setSession(nextSession);
     setAccess(null);
+    setStudioAccess(null);
     setAccessError(null);
 
     if (!nextSession?.user || !supabase || !isSupabaseConfigured) {
@@ -45,18 +54,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
-    const { data, error } = await supabase
-      .from("restaurant_users")
-      .select("restaurant_id, role")
-      .eq("user_id", nextSession.user.id)
-      .maybeSingle();
+    const [restaurantResult, studioResult] = await Promise.all([
+      supabase
+        .from("restaurant_users")
+        .select("restaurant_id, role")
+        .eq("user_id", nextSession.user.id)
+        .maybeSingle(),
+      supabase
+        .from("blackdot_studio_users")
+        .select("role")
+        .eq("user_id", nextSession.user.id)
+        .eq("active", true)
+        .maybeSingle(),
+    ]);
 
-    if (error) {
+    if (restaurantResult.error) {
       setAccessError("Impossibile verificare l'accesso al ristorante.");
-    } else if (!data) {
+    } else if (restaurantResult.data) {
+      setAccess({ restaurantId: restaurantResult.data.restaurant_id, role: restaurantResult.data.role as RestaurantUserRole });
+    }
+
+    if (!studioResult.error && studioResult.data?.role === "STUDIO_ADMIN") {
+      setStudioAccess({ role: "STUDIO_ADMIN" });
+    }
+
+    if (!restaurantResult.error && !restaurantResult.data && (studioResult.error || !studioResult.data)) {
       setAccessError(normalizeAccessError());
-    } else {
-      setAccess({ restaurantId: data.restaurant_id, role: data.role as RestaurantUserRole });
     }
 
     setLoading(false);
@@ -108,12 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     restaurantId: access?.restaurantId ?? null,
     role: access?.role ?? null,
+    studioRole: studioAccess?.role ?? null,
+    isStudioAdmin: studioAccess?.role === "STUDIO_ADMIN",
     canManageOperations: access?.role === "OWNER" || access?.role === "MANAGER",
     accessError,
     signIn,
     signOut,
     refreshAccess,
-  }), [loading, session, access, accessError, signIn, signOut, refreshAccess]);
+  }), [loading, session, access, studioAccess, accessError, signIn, signOut, refreshAccess]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

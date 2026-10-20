@@ -32,6 +32,7 @@ type RestaurantThemeContextValue = {
   branding: RestaurantBranding;
   savedBranding: RestaurantBranding;
   loading: boolean;
+  canManageBranding: boolean;
   previewBranding: (draft: RestaurantBrandingDraft) => void;
   restoreBranding: () => void;
   saveBranding: (draft: RestaurantBrandingDraft, logoFile: File | null) => Promise<void>;
@@ -106,8 +107,10 @@ function logoPathFor(restaurantId: string, mimeType: string) {
   return `${restaurantId}/logo.${extension}`;
 }
 
-export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
-  const { restaurantId, role, user } = useAuth();
+export function RestaurantThemeProvider({ children, targetRestaurantId, canManageBranding: canManageBrandingOverride }: { children: ReactNode; targetRestaurantId?: string | null; canManageBranding?: boolean }) {
+  const { restaurantId: authenticatedRestaurantId, role, user } = useAuth();
+  const restaurantId = targetRestaurantId ?? authenticatedRestaurantId;
+  const canManageBranding = canManageBrandingOverride ?? role === "OWNER";
   const [branding, setBranding] = useState<RestaurantBranding>(DEFAULT_BRANDING);
   const [savedBranding, setSavedBranding] = useState<RestaurantBranding>(DEFAULT_BRANDING);
   const [loading, setLoading] = useState(false);
@@ -120,7 +123,7 @@ export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
   }, [restaurantId]);
 
   const saveBranding = useCallback(async (draft: RestaurantBrandingDraft, logoFile: File | null) => {
-    if (!supabase || !restaurantId || role !== "OWNER") throw new Error("Solo il proprietario può modificare l’identità grafica.");
+    if (!supabase || !restaurantId || !canManageBranding) throw new Error("Non sei autorizzato a modificare l’identità grafica.");
 
     let nextLogoPath = draft.logoPath;
     let uploadedPath: string | null = null;
@@ -159,17 +162,17 @@ export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
     const nextBranding = mapBranding(data as DatabaseBranding, logoUrl);
     setSavedBranding(nextBranding);
     setBranding(nextBranding);
-  }, [restaurantId, role, savedBranding.logoPath]);
+  }, [restaurantId, canManageBranding, savedBranding.logoPath]);
 
   const resetBranding = useCallback(async () => {
-    if (!supabase || !restaurantId || role !== "OWNER") throw new Error("Solo il proprietario può modificare l’identità grafica.");
+    if (!supabase || !restaurantId || !canManageBranding) throw new Error("Non sei autorizzato a modificare l’identità grafica.");
     const previousLogoPath = savedBranding.logoPath;
     const { error } = await supabase.from("restaurant_branding").delete().eq("restaurant_id", restaurantId);
     if (error) throw error;
     if (previousLogoPath) await supabase.storage.from(BRAND_ASSET_BUCKET).remove([previousLogoPath]);
     setSavedBranding(DEFAULT_BRANDING);
     setBranding(DEFAULT_BRANDING);
-  }, [restaurantId, role, savedBranding.logoPath]);
+  }, [restaurantId, canManageBranding, savedBranding.logoPath]);
 
   useEffect(() => {
     let active = true;
@@ -217,7 +220,7 @@ export function RestaurantThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(branding);
   }, [branding]);
 
-  const value = useMemo(() => ({ branding, savedBranding, loading, previewBranding, restoreBranding, saveBranding, resetBranding }), [branding, savedBranding, loading, previewBranding, restoreBranding, saveBranding, resetBranding]);
+  const value = useMemo(() => ({ branding, savedBranding, loading, canManageBranding, previewBranding, restoreBranding, saveBranding, resetBranding }), [branding, savedBranding, loading, canManageBranding, previewBranding, restoreBranding, saveBranding, resetBranding]);
   return <RestaurantThemeContext.Provider value={value}>{children}</RestaurantThemeContext.Provider>;
 }
 

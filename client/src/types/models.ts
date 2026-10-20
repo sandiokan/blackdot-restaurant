@@ -18,6 +18,12 @@ export interface Restaurant {
   updatedAt: string;
 }
 
+export interface StudioRestaurantOption {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export type RestaurantUpdate = Omit<Restaurant, "id" | "createdAt" | "updatedAt">;
 
 export type RestaurantThemeMode = "DARK" | "LIGHT";

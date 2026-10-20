@@ -3,7 +3,6 @@ import { ImagePlus, Palette, RotateCcw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import BrandMark from "@/components/BrandMark";
 import { Panel, PrimaryButton, Segmented } from "@/components/shared/Primitives";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurantTheme } from "@/contexts/RestaurantThemeContext";
 import type { RestaurantBrandingDraft } from "@/types/models";
 
@@ -27,9 +26,8 @@ function toDraft(branding: RestaurantBrandingDraft | { displayName: string | nul
   };
 }
 
-export default function BrandingSettingsPanel() {
-  const { role } = useAuth();
-  const { savedBranding, previewBranding, restoreBranding, saveBranding, resetBranding, loading } = useRestaurantTheme();
+export default function BrandingSettingsPanel({ restaurantName }: { restaurantName?: string }) {
+  const { savedBranding, previewBranding, restoreBranding, saveBranding, resetBranding, loading, canManageBranding } = useRestaurantTheme();
   const [draft, setDraft] = useState<RestaurantBrandingDraft>(() => toDraft(savedBranding));
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -54,7 +52,7 @@ export default function BrandingSettingsPanel() {
     restoreRef.current();
   }, []);
 
-  if (role !== "OWNER") return null;
+  if (!canManageBranding) return null;
 
   function updateDraft<K extends keyof RestaurantBrandingDraft>(key: K, value: RestaurantBrandingDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -126,7 +124,7 @@ export default function BrandingSettingsPanel() {
 
   return <Panel className="branding-settings-panel">
     <div className="branding-settings-head">
-      <div><span className="settings-kicker"><Palette size={14} />Identità grafica</span><h2>Personalizza il tuo gestionale</h2><p>Le modifiche sono visibili in anteprima prima del salvataggio.</p></div>
+      <div><span className="settings-kicker"><Palette size={14} />Identità grafica</span><h2>Personalizza il gestionale{restaurantName ? ` · ${restaurantName}` : ""}</h2><p>Le modifiche sono visibili in anteprima prima del salvataggio.</p></div>
       <div className="branding-live-preview"><BrandMark /><small>Anteprima live</small></div>
     </div>
     <div className="branding-settings-grid">

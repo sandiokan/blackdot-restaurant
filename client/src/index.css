@@ -482,7 +482,13 @@ input::placeholder, textarea::placeholder { color: #626b6d; }
 .shift-grid.row { padding: 5px 0; border-top: 1px solid var(--line); }
 .shift-person { display: flex; align-items: center; gap: 8px; padding-left: 5px; }.shift-person b { font-size: 9px; }
 .shift-cell { min-height: 39px; border-radius: 5px; border: 1px solid var(--line); font-size: 8px; }
-.shift-sala { color: #d3f6df; background: #1f543c; }.shift-cucina { color: #d8e9f5; background: #294355; }.shift-bar { color: #ffdfb0; background: #68461f; }.shift-riposo { color: #a6afb4; background: #283036; }
+.shift-sala { color: #d3f6df; background: #1f543c; }.shift-cucina { color: #d8e9f5; background: #294355; }.shift-bar { color: #ffdfb0; background: #68461f; }.shift-riposo, .shift-empty { color: #a6afb4; background: #283036; }
+.restaurant-theme-light .shift-cell { border-color: rgba(28,36,36,.12); }
+.restaurant-theme-light .shift-sala { color: #225b45; background: #dceee3; border-color: #b8d9c4; }
+.restaurant-theme-light .shift-cucina { color: #254b63; background: #ddeaf0; border-color: #b5cdd9; }
+.restaurant-theme-light .shift-bar { color: #6b4228; background: #f6e0d1; border-color: #e8c2a4; }
+.restaurant-theme-light .shift-riposo { color: #566062; background: #eff1f1; border-color: #d8dddd; }
+.restaurant-theme-light .shift-empty { color: #7a8586; background: #fbfbf8; border-color: #e1e3e1; }
 .shift-legend { display: flex; flex-wrap: wrap; gap: 20px; padding: 14px 4px; color: var(--text-muted); font-size: 8px; }
 .shift-legend span { display: flex; align-items: center; gap: 6px; }.shift-legend i { width: 8px; height: 8px; border-radius: 2px; }.shift-legend i.sala { background: #2d9b68; }.shift-legend i.cucina { background: #416c88; }.shift-legend i.bar { background: #c48335; }.shift-legend i.riposo { background: #45515b; }
 

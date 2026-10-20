@@ -23,7 +23,8 @@ function shiftLabel(shift?: Shift) {
 }
 
 function shiftClass(shift?: Shift) {
-  if (!shift || shift.status === "rest" || shift.status === "cancelled") return "riposo";
+  if (!shift) return "empty";
+  if (shift.status === "rest" || shift.status === "cancelled") return "riposo";
   return shift.area.toLowerCase() as Lowercase<StaffArea>;
 }
 

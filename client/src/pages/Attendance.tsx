@@ -68,5 +68,5 @@ function insightForRange(range: AttendanceRange, peak: CoversPoint | null) {
 
 function Donut({ value, max, label, color }: { value: number; max: number; label: string; color: string }) {
   const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-  return <div className="donut-item"><div className="donut" style={{ background: `conic-gradient(${color} ${percent}%, #202729 0)` }}><span><b>{value}/{max}</b><small>{percent}%</small></span></div><strong>{label}</strong></div>;
+  return <div className="donut-item"><div className="donut" style={{ background: `conic-gradient(${color} ${percent}%, var(--surface-raised) 0)` }}><span><b>{value}/{max}</b><small>{percent}%</small></span></div><strong>{label}</strong></div>;
 }

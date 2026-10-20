@@ -80,6 +80,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               ))}
               <Link href="/onboarding" onClick={() => setMobileMenu(false)}><ChefHat size={20} />Configura ristorante</Link>
             </nav>
+            <button className="mobile-menu-logout" onClick={() => { setMobileMenu(false); void signOut(); }}><LogOut size={20} />Esci</button>
           </div>
         </div>
       )}

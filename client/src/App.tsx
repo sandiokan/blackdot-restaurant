@@ -20,6 +20,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import Onboarding from "@/pages/Onboarding";
 import Login from "@/pages/Login";
 import AcceptInvitation from "@/pages/AcceptInvitation";
+import FileArchive from "@/pages/FileArchive";
 
 function DashboardRoutes() {
   return (
@@ -31,6 +32,7 @@ function DashboardRoutes() {
         <Route path="/affluenza" component={Attendance} />
         <Route path="/personale" component={Staff} />
         <Route path="/turni" component={Shifts} />
+        <Route path="/archivio" component={FileArchive} />
         <Route path="/impostazioni" component={SettingsPage} />
         <Route><Overview /></Route>
       </Switch>

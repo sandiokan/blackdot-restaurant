@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Bell, CalendarDays, ChartNoAxesColumnIncreasing, ChefHat, ChevronDown,
-  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList, RefreshCw, LogOut,
+  Clock3, HelpCircle, Home, Menu, Search, Settings, Users, X, ClipboardList, RefreshCw, LogOut, FolderArchive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppData } from "@/contexts/AppDataContext";
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/affluenza", label: "Affluenza", icon: ChartNoAxesColumnIncreasing },
   { href: "/personale", label: "Personale", icon: Users },
   { href: "/turni", label: "Turni", icon: Clock3 },
+  { href: "/archivio", label: "Archivio", icon: FolderArchive },
   { href: "/impostazioni", label: "Impostazioni", icon: Settings },
 ];
 

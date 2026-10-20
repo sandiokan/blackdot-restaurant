@@ -41,6 +41,23 @@ export interface RestaurantBrandingDraft {
   secondaryColor: string;
 }
 
+export interface RestaurantFile {
+  id: string;
+  restaurantId: string;
+  storagePath: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface RestaurantFileUpload {
+  restaurantId: string;
+  userId: string;
+  file: File;
+}
+
 export interface Reservation {
   id: string;
   date: string;

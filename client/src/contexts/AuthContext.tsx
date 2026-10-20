@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { clearPendingPasswordRecovery, hasPendingPasswordRecovery, isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export type RestaurantUserRole = "OWNER" | "MANAGER" | "EMPLOYEE";
 export type StudioUserRole = "STUDIO_ADMIN";
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [access, setAccess] = useState<RestaurantAccess | null>(null);
   const [studioAccess, setStudioAccess] = useState<StudioAccess | null>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
-  const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(initialRecovery.active);
+  const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(() => initialRecovery.active || hasPendingPasswordRecovery());
   const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(initialRecovery.error);
 
   const resolveSession = useCallback(async (nextSession: Session | null) => {
@@ -131,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         setPasswordRecoveryActive(false);
         setPasswordRecoveryError(null);
+        clearPendingPasswordRecovery();
       }
       void resolveSession(nextSession);
     });
@@ -147,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     setPasswordRecoveryActive(false);
     setPasswordRecoveryError(null);
+    clearPendingPasswordRecovery();
     await resolveSession(data.session);
   }, [resolveSession]);
 
@@ -156,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     setPasswordRecoveryActive(false);
     setPasswordRecoveryError(null);
+    clearPendingPasswordRecovery();
     await resolveSession(null);
   }, [resolveSession]);
 
@@ -166,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completePasswordRecovery = useCallback(() => {
     setPasswordRecoveryActive(false);
     setPasswordRecoveryError(null);
+    clearPendingPasswordRecovery();
   }, []);
 
   const value = useMemo(() => ({

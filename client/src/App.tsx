@@ -7,6 +7,7 @@ import AppShell from "@/components/layout/AppShell";
 import NewReservationDialog from "@/components/NewReservationDialog";
 import { AppDataProvider } from "@/contexts/AppDataContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { RestaurantThemeProvider } from "@/contexts/RestaurantThemeContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import AccessNotConfigured from "@/pages/AccessNotConfigured";
 import Overview from "@/pages/Overview";
@@ -39,11 +40,13 @@ function DashboardRoutes() {
 
 function AuthenticatedApp({ restaurantId }: { restaurantId: string }) {
   return <AppDataProvider restaurantId={restaurantId}>
-    <Switch>
-      <Route path="/onboarding" component={Onboarding} />
-      <Route><DashboardRoutes /></Route>
-    </Switch>
-    <NewReservationDialog />
+    <RestaurantThemeProvider>
+      <Switch>
+        <Route path="/onboarding" component={Onboarding} />
+        <Route><DashboardRoutes /></Route>
+      </Switch>
+      <NewReservationDialog />
+    </RestaurantThemeProvider>
   </AppDataProvider>;
 }
 

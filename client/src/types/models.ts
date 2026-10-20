@@ -20,6 +20,18 @@ export interface Restaurant {
 
 export type RestaurantUpdate = Omit<Restaurant, "id" | "createdAt" | "updatedAt">;
 
+export type RestaurantThemeMode = "DARK" | "LIGHT";
+
+export interface RestaurantBranding {
+  restaurantId: string | null;
+  displayName: string | null;
+  logoPath: string | null;
+  logoUrl: string | null;
+  themeMode: RestaurantThemeMode;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface Reservation {
   id: string;
   date: string;

@@ -7,6 +7,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import BrandMark from "@/components/BrandMark";
 
 const navItems = [
   { href: "/", label: "Overview", icon: Home },
@@ -32,7 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span>BLACKDOT</span><small>RESTAURANT</small></div>
+        <BrandMark />
         <button className="restaurant-switcher"><ChefHat size={22} /><span><b>{restaurantLead}</b><small>{restaurantTail.join(" ") || "BLACKDOT"}</small></span><ChevronDown size={16} /></button>
         <nav className="side-nav">
           {navItems.map(({ href, label, icon: Icon }) => (
@@ -71,7 +72,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {mobileMenu && (
         <div className="mobile-menu-backdrop" onClick={() => setMobileMenu(false)}>
           <div className="mobile-menu-sheet" onClick={(event) => event.stopPropagation()}>
-            <div className="mobile-menu-head"><div className="brand"><span>BLACKDOT</span><small>RESTAURANT</small></div><button onClick={() => setMobileMenu(false)}><X /></button></div>
+            <div className="mobile-menu-head"><BrandMark /><button onClick={() => setMobileMenu(false)}><X /></button></div>
             <nav className="mobile-menu-list">
               {navItems.map(({ href, label, icon: Icon }) => (
                 <Link key={href} href={href} onClick={() => setMobileMenu(false)} className={cn(active(href) && "active")}><Icon size={20} />{label}</Link>

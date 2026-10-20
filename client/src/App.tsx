@@ -22,6 +22,7 @@ import Login from "@/pages/Login";
 import AcceptInvitation from "@/pages/AcceptInvitation";
 import FileArchive from "@/pages/FileArchive";
 import StudioBranding from "@/pages/StudioBranding";
+import PasswordRecovery from "@/pages/PasswordRecovery";
 
 function DashboardRoutes() {
   return (
@@ -54,16 +55,18 @@ function AuthenticatedApp({ restaurantId }: { restaurantId: string }) {
 }
 
 function AuthGate() {
-  const { loading, user, restaurantId, role, isStudioAdmin, accessError } = useAuth();
+  const { loading, user, restaurantId, role, isStudioAdmin, accessError, passwordRecoveryActive, passwordRecoveryError } = useAuth();
   const [location, navigate] = useLocation();
 
   useEffect(() => {
+    if (!loading && (passwordRecoveryActive || passwordRecoveryError) && location !== "/reset-password") navigate("/reset-password", { replace: true });
     if (!loading && !user && location !== "/login") navigate("/login", { replace: true });
     if (!loading && user && location === "/login" && restaurantId && role) navigate("/", { replace: true });
     if (!loading && user && isStudioAdmin && !restaurantId) navigate("/studio/branding", { replace: true });
-  }, [loading, user, restaurantId, role, isStudioAdmin, location, navigate]);
+  }, [loading, user, restaurantId, role, isStudioAdmin, passwordRecoveryActive, passwordRecoveryError, location, navigate]);
 
   if (loading) return <main className="auth-loading">Verifica accesso...</main>;
+  if (passwordRecoveryActive || passwordRecoveryError) return <main className="auth-loading">Apertura recupero password...</main>;
   if (!user) return <Login />;
   if (isStudioAdmin && !restaurantId) return <main className="auth-loading">Apertura area Studio...</main>;
   if (!restaurantId || !role || accessError) return <AccessNotConfigured />;
@@ -93,6 +96,7 @@ function App() {
           <AuthProvider>
             <Switch>
               <Route path="/accept-invitation" component={AcceptInvitation} />
+              <Route path="/reset-password" component={PasswordRecovery} />
               <Route path="/studio/branding" component={StudioGate} />
               <Route><AuthGate /></Route>
             </Switch>
